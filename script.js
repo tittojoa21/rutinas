@@ -1,0 +1,1147 @@
+// Esperar a que el DOM esté completamente cargado
+document.addEventListener('DOMContentLoaded', function() {
+    // Variables globales
+    let days = []; // Array para almacenar los días con sus ejercicios
+    let usedDays = []; // Para controlar qué días ya están usados
+    
+    // Elementos del DOM
+    const daysContainer = document.getElementById('days-container');
+    const daysCountElement = document.getElementById('days-count');
+    const addDayBtn = document.getElementById('add-day-btn');
+    const previewBtn = document.getElementById('preview-btn');
+    const generatePdfBtn = document.getElementById('generate-pdf-btn');
+    const dayModal = document.getElementById('day-modal');
+    const dayModalTitle = document.getElementById('day-modal-title');
+    const dayForm = document.getElementById('day-form');
+    const cancelDayBtn = document.getElementById('cancel-day-btn');
+    const exerciseModal = document.getElementById('exercise-modal');
+    const exerciseModalTitle = document.getElementById('exercise-modal-title');
+    const exerciseModalSubtitle = document.getElementById('exercise-modal-subtitle');
+    const exerciseForm = document.getElementById('exercise-form');
+    const cancelExerciseBtn = document.getElementById('cancel-exercise-btn');
+    const previewSection = document.querySelector('.preview-section');
+    const closePreviewBtn = document.getElementById('close-preview');
+    const pdfContent = document.getElementById('pdf-content');
+    const clientModal = document.getElementById('client-modal');
+    const clientNameInput = document.getElementById('client-name');
+    const routineNameInput = document.getElementById('routine-name');
+    const routineNotesInput = document.getElementById('routine-notes');
+    const confirmClientBtn = document.getElementById('confirm-client-btn');
+    const cancelClientBtn = document.getElementById('cancel-client-btn');
+    const downloadPdfBtn = document.getElementById('download-pdf-btn');
+    const editRoutineBtn = document.getElementById('edit-routine-btn');
+    const scrollTopBtn = document.getElementById('scroll-top-btn');
+    const currentDatePreview = document.getElementById('current-date-preview');
+    const routineDaysPreview = document.getElementById('routine-days-preview');
+    const routineNamePreview = document.getElementById('routine-name-preview');
+    const clientNamePreview = document.getElementById('client-name-preview');
+    
+    // Variables para edición
+    let isEditingDay = false;
+    let editingDayIndex = null;
+    let isEditingExercise = false;
+    let editingExerciseDayIndex = null;
+    let editingExerciseIndex = null;
+    
+    // Inicializar la fecha actual en la vista previa
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+    currentDatePreview.textContent = formattedDate;
+    
+    // Días de la semana en orden
+    const weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    
+    // ========== FUNCIONES PARA MANEJAR DÍAS ==========
+    
+    // Función para agregar un nuevo día
+    function addDay() {
+        // Mostrar modal para seleccionar día
+        dayModalTitle.textContent = "Agregar Día a la Rutina";
+        document.getElementById('modal-day-index').value = '';
+        dayForm.reset();
+        
+        // Filtrar días disponibles (que no estén ya en uso)
+        const daySelect = document.getElementById('day-name');
+        const currentOptions = Array.from(daySelect.options);
+        
+        // Mantener solo la opción por defecto
+        daySelect.innerHTML = '<option value="">Seleccionar día...</option>';
+        
+        // Agregar opciones disponibles
+        weekDays.forEach(day => {
+            if (!usedDays.includes(day)) {
+                const option = document.createElement('option');
+                option.value = day;
+                option.textContent = day;
+                daySelect.appendChild(option);
+            }
+        });
+        
+        // Agregar opciones de "Día X"
+        for (let i = 1; i <= 7; i++) {
+            const dayName = `Día ${i}`;
+            if (!usedDays.includes(dayName)) {
+                const option = document.createElement('option');
+                option.value = dayName;
+                option.textContent = dayName;
+                daySelect.appendChild(option);
+            }
+        }
+        
+        dayModal.classList.remove('hidden');
+    }
+    
+    // Función para guardar un día (nuevo o editado)
+    function saveDay(dayData) {
+        if (isEditingDay && editingDayIndex !== null) {
+            // Editar día existente
+            // Liberar el nombre anterior
+            const oldDayName = days[editingDayIndex].name;
+            const oldIndex = usedDays.indexOf(oldDayName);
+            if (oldIndex > -1) {
+                usedDays.splice(oldIndex, 1);
+            }
+            
+            // Actualizar día
+            dayData.id = days[editingDayIndex].id;
+            days[editingDayIndex] = dayData;
+            
+            showNotification(`Día "${dayData.name}" actualizado`, 'success');
+        } else {
+            // Agregar nuevo día
+            dayData.id = Date.now() + Math.random();
+            dayData.exercises = [];
+            days.push(dayData);
+            
+            showNotification(`Día "${dayData.name}" agregado a la rutina`, 'success');
+        }
+        
+        // Agregar a días usados
+        if (!usedDays.includes(dayData.name)) {
+            usedDays.push(dayData.name);
+        }
+        
+        // Ordenar días según orden de la semana
+        days.sort((a, b) => {
+            const aIndex = weekDays.indexOf(a.name);
+            const bIndex = weekDays.indexOf(b.name);
+            
+            // Si ambos están en weekDays, ordenar por ese orden
+            if (aIndex > -1 && bIndex > -1) {
+                return aIndex - bIndex;
+            }
+            // Si solo a está en weekDays, a va primero
+            if (aIndex > -1) return -1;
+            // Si solo b está en weekDays, b va primero
+            if (bIndex > -1) return 1;
+            // Si ninguno está en weekDays, ordenar por número (Día 1, Día 2, etc.)
+            const aNum = parseInt(a.name.replace('Día ', '')) || 0;
+            const bNum = parseInt(b.name.replace('Día ', '')) || 0;
+            return aNum - bNum;
+        });
+        
+        updateDaysList();
+        updateDaysCounter();
+        
+        // Cerrar modal
+        dayModal.classList.add('hidden');
+        isEditingDay = false;
+        editingDayIndex = null;
+    }
+    
+    // Función para editar un día
+    function editDay(index) {
+        const day = days[index];
+        
+        // Cargar datos en el formulario
+        document.getElementById('modal-day-index').value = index;
+        document.getElementById('day-name').value = day.name;
+        document.getElementById('day-focus').value = day.focus || '';
+        document.getElementById('day-notes').value = day.notes || '';
+        
+        // Configurar modal para edición
+        dayModalTitle.textContent = `Editar Día: ${day.name}`;
+        
+        // Filtrar días disponibles
+        const daySelect = document.getElementById('day-name');
+        const currentOptions = Array.from(daySelect.options);
+        
+        // Mantener solo la opción por defecto
+        daySelect.innerHTML = '<option value="">Seleccionar día...</option>';
+        
+        // Agregar la opción actual primero
+        const currentOption = document.createElement('option');
+        currentOption.value = day.name;
+        currentOption.textContent = day.name;
+        currentOption.selected = true;
+        daySelect.appendChild(currentOption);
+        
+        // Agregar otras opciones disponibles
+        weekDays.forEach(dayName => {
+            if (!usedDays.includes(dayName) || dayName === day.name) {
+                const option = document.createElement('option');
+                option.value = dayName;
+                option.textContent = dayName;
+                daySelect.appendChild(option);
+            }
+        });
+        
+        // Agregar opciones de "Día X"
+        for (let i = 1; i <= 7; i++) {
+            const dayName = `Día ${i}`;
+            if (!usedDays.includes(dayName) || dayName === day.name) {
+                const option = document.createElement('option');
+                option.value = dayName;
+                option.textContent = dayName;
+                daySelect.appendChild(option);
+            }
+        }
+        
+        isEditingDay = true;
+        editingDayIndex = index;
+        dayModal.classList.remove('hidden');
+    }
+    
+    // Función para eliminar un día
+    function removeDay(index) {
+        const day = days[index];
+        
+        if (!confirm(`¿Estás seguro de que deseas eliminar el día "${day.name}" y todos sus ejercicios?`)) {
+            return;
+        }
+        
+        // Eliminar día
+        days.splice(index, 1);
+        
+        // Liberar el nombre del día
+        const dayIndex = usedDays.indexOf(day.name);
+        if (dayIndex > -1) {
+            usedDays.splice(dayIndex, 1);
+        }
+        
+        updateDaysList();
+        updateDaysCounter();
+        
+        showNotification(`Día "${day.name}" eliminado`, 'info');
+    }
+    
+    // Función para actualizar la lista de días en la interfaz
+    function updateDaysList() {
+        // Limpiar contenedor
+        daysContainer.innerHTML = '';
+        
+        // Si no hay días, mostrar estado vacío
+        if (days.length === 0) {
+            daysContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-calendar-day fa-3x"></i>
+                    <h3>No hay días en la rutina</h3>
+                    <p>Comienza agregando un día usando el botón "Agregar Día".</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Crear tarjetas para cada día
+        days.forEach((day, dayIndex) => {
+            const dayCard = document.createElement('div');
+            dayCard.className = 'day-card';
+            dayCard.dataset.dayId = day.id;
+            dayCard.dataset.dayIndex = dayIndex;
+            
+            // Crear HTML para ejercicios del día
+            let exercisesHTML = '';
+            if (day.exercises.length === 0) {
+                exercisesHTML = `
+                    <div class="no-exercises">
+                        <i class="fas fa-dumbbell"></i>
+                        <p>No hay ejercicios en este día. Agrega el primero.</p>
+                    </div>
+                `;
+            } else {
+                day.exercises.forEach((exercise, exIndex) => {
+                    // Crear enlace de video si existe
+                    let videoLink = '';
+                    if (exercise.video) {
+                        videoLink = `
+                            <a href="${exercise.video}" target="_blank" class="video-link">
+                                <i class="fab fa-youtube"></i> Ver video de demostración
+                            </a>
+                        `;
+                    }
+                    
+                    exercisesHTML += `
+                        <div class="exercise-card">
+                            <div class="exercise-header">
+                                <div class="exercise-title">
+                                    <div class="exercise-number">${exIndex + 1}</div>
+                                    <div class="exercise-name">${exercise.name}</div>
+                                    ${exercise.muscle ? `<span class="exercise-muscle">${getMuscleLabel(exercise.muscle)}</span>` : ''}
+                                </div>
+                                <div class="exercise-actions">
+                                    <button class="exercise-action-btn edit-exercise-btn" data-day-index="${dayIndex}" data-exercise-index="${exIndex}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="exercise-action-btn delete-exercise-btn" data-day-index="${dayIndex}" data-exercise-index="${exIndex}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="exercise-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Series:</span>
+                                    <span class="detail-value">${exercise.sets}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Repeticiones:</span>
+                                    <span class="detail-value">${exercise.reps}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Descanso:</span>
+                                    <span class="detail-value">${exercise.rest || '60'} seg.</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Video:</span>
+                                    <div class="detail-value">
+                                        ${exercise.video ? videoLink : '<span style="color:#999">No especificado</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                            ${exercise.notes ? `
+                            <div class="exercise-notes">
+                                <span class="detail-label">Notas:</span>
+                                <div class="detail-value">${exercise.notes}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            }
+            
+            // Crear HTML del día
+            dayCard.innerHTML = `
+                <div class="day-header">
+                    <div class="day-title">
+                        <div class="day-badge">
+                            <i class="fas fa-calendar-day"></i> ${day.name}
+                        </div>
+                        <div class="day-info">
+                            <div class="day-name">${day.focus ? `Enfoque: ${day.focus}` : 'Entrenamiento del día'}</div>
+                            <div class="day-focus">${day.exercises.length} ejercicio${day.exercises.length !== 1 ? 's' : ''}</div>
+                        </div>
+                    </div>
+                    <div class="day-actions">
+                        <button class="day-action-btn add-exercise-btn" data-day-index="${dayIndex}">
+                            <i class="fas fa-plus"></i> Agregar Ejercicio
+                        </button>
+                        <button class="day-action-btn edit-day-btn" data-day-index="${dayIndex}">
+                            <i class="fas fa-edit"></i> Editar Día
+                        </button>
+                        <button class="day-action-btn remove-day-btn" data-day-index="${dayIndex}">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+                ${day.notes ? `
+                <div class="day-notes">
+                    <p><strong>Notas:</strong> ${day.notes}</p>
+                </div>
+                ` : ''}
+                <div class="exercises-container">
+                    ${exercisesHTML}
+                </div>
+            `;
+            
+            daysContainer.appendChild(dayCard);
+        });
+        
+        // Agregar event listeners a los botones de los días
+        document.querySelectorAll('.day-actions button').forEach(button => {
+            button.addEventListener('click', function() {
+                const dayIndex = parseInt(this.dataset.dayIndex);
+                const action = this.classList.contains('add-exercise-btn') ? 'add-exercise' :
+                              this.classList.contains('edit-day-btn') ? 'edit-day' :
+                              this.classList.contains('remove-day-btn') ? 'remove-day' : null;
+                
+                if (action === 'add-exercise') {
+                    addExerciseToDay(dayIndex);
+                } else if (action === 'edit-day') {
+                    editDay(dayIndex);
+                } else if (action === 'remove-day') {
+                    removeDay(dayIndex);
+                }
+            });
+        });
+        
+        // Agregar event listeners a los botones de ejercicios
+        document.querySelectorAll('.exercise-actions button').forEach(button => {
+            button.addEventListener('click', function() {
+                const dayIndex = parseInt(this.dataset.dayIndex);
+                const exerciseIndex = parseInt(this.dataset.exerciseIndex);
+                
+                if (this.classList.contains('edit-exercise-btn')) {
+                    editExercise(dayIndex, exerciseIndex);
+                } else if (this.classList.contains('delete-exercise-btn')) {
+                    deleteExercise(dayIndex, exerciseIndex);
+                }
+            });
+        });
+    }
+    
+    // Función para actualizar el contador de días
+    function updateDaysCounter() {
+        daysCountElement.textContent = days.length;
+        routineDaysPreview.textContent = days.length;
+    }
+    
+    // ========== FUNCIONES PARA MANEJAR EJERCICIOS ==========
+    
+    // Función para agregar un ejercicio a un día
+    function addExerciseToDay(dayIndex) {
+        const day = days[dayIndex];
+        
+        // Configurar modal para agregar ejercicio
+        exerciseModalTitle.textContent = "Agregar Ejercicio";
+        exerciseModalSubtitle.textContent = `Día: ${day.name}${day.focus ? ` (${day.focus})` : ''}`;
+        document.getElementById('modal-day-index').value = dayIndex;
+        document.getElementById('modal-exercise-index').value = '';
+        exerciseForm.reset();
+        document.getElementById('exercise-sets').value = '3';
+        document.getElementById('exercise-rest').value = '60';
+        
+        isEditingExercise = false;
+        editingExerciseDayIndex = null;
+        editingExerciseIndex = null;
+        
+        exerciseModal.classList.remove('hidden');
+    }
+    
+    // Función para editar un ejercicio
+    function editExercise(dayIndex, exerciseIndex) {
+        const day = days[dayIndex];
+        const exercise = day.exercises[exerciseIndex];
+        
+        // Configurar modal para editar ejercicio
+        exerciseModalTitle.textContent = "Editar Ejercicio";
+        exerciseModalSubtitle.textContent = `Día: ${day.name} - Ejercicio: ${exercise.name}`;
+        document.getElementById('modal-day-index').value = dayIndex;
+        document.getElementById('modal-exercise-index').value = exerciseIndex;
+        
+        // Cargar datos del ejercicio
+        document.getElementById('exercise-name').value = exercise.name;
+        document.getElementById('exercise-muscle').value = exercise.muscle || '';
+        document.getElementById('exercise-sets').value = exercise.sets;
+        document.getElementById('exercise-reps').value = exercise.reps;
+        document.getElementById('exercise-rest').value = exercise.rest || '60';
+        document.getElementById('exercise-video').value = exercise.video || '';
+        document.getElementById('exercise-notes').value = exercise.notes || '';
+        
+        isEditingExercise = true;
+        editingExerciseDayIndex = dayIndex;
+        editingExerciseIndex = exerciseIndex;
+        
+        exerciseModal.classList.remove('hidden');
+    }
+    
+    // Función para guardar un ejercicio (nuevo o editado)
+    function saveExercise(exerciseData) {
+        const dayIndex = parseInt(document.getElementById('modal-day-index').value);
+        
+        if (isEditingExercise && editingExerciseDayIndex !== null && editingExerciseIndex !== null) {
+            // Editar ejercicio existente
+            days[editingExerciseDayIndex].exercises[editingExerciseIndex] = exerciseData;
+            showNotification(`Ejercicio "${exerciseData.name}" actualizado`, 'success');
+        } else {
+            // Agregar nuevo ejercicio
+            days[dayIndex].exercises.push(exerciseData);
+            showNotification(`Ejercicio "${exerciseData.name}" agregado al día`, 'success');
+        }
+        
+        updateDaysList();
+        exerciseModal.classList.add('hidden');
+        
+        // Desplazar al día correspondiente
+        setTimeout(() => {
+            const dayElement = document.querySelector(`[data-day-index="${dayIndex}"]`);
+            if (dayElement) {
+                dayElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 100);
+    }
+    
+    // Función para eliminar un ejercicio
+    function deleteExercise(dayIndex, exerciseIndex) {
+        const exercise = days[dayIndex].exercises[exerciseIndex];
+        
+        if (!confirm(`¿Estás seguro de que deseas eliminar el ejercicio "${exercise.name}"?`)) {
+            return;
+        }
+        
+        // Eliminar ejercicio
+        days[dayIndex].exercises.splice(exerciseIndex, 1);
+        
+        updateDaysList();
+        showNotification(`Ejercicio "${exercise.name}" eliminado`, 'info');
+    }
+    
+    // ========== MANEJO DE FORMULARIOS ==========
+    
+    // Event listener para formulario de día
+    dayForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const dayData = {
+            name: document.getElementById('day-name').value,
+            focus: document.getElementById('day-focus').value.trim(),
+            notes: document.getElementById('day-notes').value.trim()
+        };
+        
+        if (!dayData.name) {
+            showNotification('Debes seleccionar un día', 'error');
+            return;
+        }
+        
+        saveDay(dayData);
+    });
+    
+    // Event listener para formulario de ejercicio
+    exerciseForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const exerciseData = {
+            name: document.getElementById('exercise-name').value.trim(),
+            muscle: document.getElementById('exercise-muscle').value,
+            sets: document.getElementById('exercise-sets').value,
+            reps: document.getElementById('exercise-reps').value.trim(),
+            rest: document.getElementById('exercise-rest').value || '60',
+            video: document.getElementById('exercise-video').value.trim(),
+            notes: document.getElementById('exercise-notes').value.trim()
+        };
+        
+        // Validar datos requeridos
+        if (!exerciseData.name) {
+            showNotification('El nombre del ejercicio es requerido', 'error');
+            return;
+        }
+        
+        if (!exerciseData.sets || exerciseData.sets < 1) {
+            showNotification('Debe especificar al menos 1 serie', 'error');
+            return;
+        }
+        
+        if (!exerciseData.reps) {
+            showNotification('Las repeticiones son requeridas', 'error');
+            return;
+        }
+        
+        // Validar URL de video si se proporcionó
+        if (exerciseData.video && !isValidUrl(exerciseData.video)) {
+            showNotification('La URL del video no es válida', 'error');
+            return;
+        }
+        
+        saveExercise(exerciseData);
+    });
+    
+    // Event listeners para cancelar modales
+    cancelDayBtn.addEventListener('click', function() {
+        dayModal.classList.add('hidden');
+        isEditingDay = false;
+        editingDayIndex = null;
+    });
+    
+    cancelExerciseBtn.addEventListener('click', function() {
+        exerciseModal.classList.add('hidden');
+        isEditingExercise = false;
+        editingExerciseDayIndex = null;
+        editingExerciseIndex = null;
+    });
+    
+    // Event listener para botón agregar día
+    addDayBtn.addEventListener('click', addDay);
+    
+    // ========== VISTA PREVIA Y GENERACIÓN DE PDF ==========
+    
+    // Función para mostrar/ocultar vista previa
+    previewBtn.addEventListener('click', function() {
+        if (days.length === 0) {
+            showNotification('No hay días en la rutina. Agrega al menos un día.', 'warning');
+            return;
+        }
+        
+        // Verificar si hay al menos un ejercicio en algún día
+        const hasExercises = days.some(day => day.exercises.length > 0);
+        if (!hasExercises) {
+            showNotification('No hay ejercicios en la rutina. Agrega al menos un ejercicio en algún día.', 'warning');
+            return;
+        }
+        
+        updatePdfPreview();
+        previewSection.classList.remove('hidden');
+        
+        // Desplazar a la vista previa
+        previewSection.scrollIntoView({ behavior: 'smooth' });
+    });
+    
+    // Event listener para cerrar vista previa
+    closePreviewBtn.addEventListener('click', function() {
+        previewSection.classList.add('hidden');
+    });
+    
+    // Función para actualizar la vista previa del PDF
+    function updatePdfPreview() {
+        // Limpiar contenido
+        pdfContent.innerHTML = '';
+        
+        // Agregar sección para cada día
+        days.forEach(day => {
+            if (day.exercises.length === 0) return;
+            
+            const daySection = document.createElement('div');
+            daySection.className = 'pdf-day-section';
+            
+            // Crear filas de la tabla para los ejercicios
+            let tableRows = '';
+            day.exercises.forEach((exercise, index) => {
+                // Crear enlace de video clickeable
+                let videoCell = '<td>-</td>';
+                if (exercise.video) {
+                    const shortUrl = exercise.video.length > 30 ? 
+                        exercise.video.substring(0, 30) + '...' : exercise.video;
+                    
+                    videoCell = `
+                        <td class="video-cell">
+                            <a href="${exercise.video}" target="_blank" title="Ver video de ${exercise.name}">
+                                <i class="fas fa-video"></i> ${shortUrl}
+                            </a>
+                        </td>
+                    `;
+                }
+                
+                tableRows += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${exercise.name}</strong></td>
+                        <td>${getMuscleLabel(exercise.muscle) || '-'}</td>
+                        <td>${exercise.sets}</td>
+                        <td>${exercise.reps}</td>
+                        <td>${exercise.rest || '60'} seg.</td>
+                        ${videoCell}
+                        <td>${exercise.notes || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            // Crear sección del día
+            daySection.innerHTML = `
+                <div class="pdf-day-header">
+                    <div class="pdf-day-title">
+                        <i class="fas fa-calendar-day"></i> ${day.name}
+                        ${day.focus ? `<span style="font-size: 0.9rem; color: #666; margin-left: 10px;">(${day.focus})</span>` : ''}
+                    </div>
+                    ${day.notes ? `
+                    <div class="pdf-day-notes">
+                        <strong>Notas del día:</strong> ${day.notes}
+                    </div>
+                    ` : ''}
+                </div>
+                <table class="pdf-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Ejercicio</th>
+                            <th>Grupo Muscular</th>
+                            <th>Series</th>
+                            <th>Repeticiones</th>
+                            <th>Descanso</th>
+                            <th>Video (Clickeable)</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            `;
+            
+            pdfContent.appendChild(daySection);
+        });
+        
+        // Agregar notas generales si existen
+        const generalNotes = routineNotesInput.value.trim();
+        if (generalNotes) {
+            const notesSection = document.createElement('div');
+            notesSection.className = 'pdf-routine-notes';
+            notesSection.innerHTML = `
+                <h3><i class="fas fa-clipboard-check"></i> Notas Generales de la Rutina</h3>
+                <p>${generalNotes.replace(/\n/g, '<br>')}</p>
+            `;
+            pdfContent.appendChild(notesSection);
+        }
+    }
+    
+    // Event listener para generar PDF (abrir modal de cliente)
+    generatePdfBtn.addEventListener('click', function() {
+        if (days.length === 0) {
+            showNotification('No hay días en la rutina. Agrega al menos un día.', 'warning');
+            return;
+        }
+        
+        // Verificar si hay al menos un ejercicio en algún día
+        const hasExercises = days.some(day => day.exercises.length > 0);
+        if (!hasExercises) {
+            showNotification('No hay ejercicios en la rutina. Agrega al menos un ejercicio en algún día.', 'warning');
+            return;
+        }
+        
+        // Mostrar modal para información del cliente
+        clientModal.classList.remove('hidden');
+    });
+    
+    // Event listeners para el modal del cliente
+    confirmClientBtn.addEventListener('click', function() {
+        const clientName = clientNameInput.value.trim() || 'Cliente de Luciana Gala';
+        const routineName = routineNameInput.value.trim() || 'Rutina Personalizada';
+        const routineNotes = routineNotesInput.value.trim();
+        
+        // Cerrar modal
+        clientModal.classList.add('hidden');
+        
+        // Actualizar información en vista previa
+        clientNamePreview.textContent = clientName;
+        routineNamePreview.textContent = routineName;
+        
+        // Generar PDF
+        generatePdf(clientName, routineName, routineNotes);
+    });
+    
+    cancelClientBtn.addEventListener('click', function() {
+        clientModal.classList.add('hidden');
+    });
+    
+    // Event listener para descargar PDF desde vista previa
+    downloadPdfBtn.addEventListener('click', function() {
+        const clientName = clientNamePreview.textContent;
+        const routineName = routineNamePreview.textContent;
+        const routineNotes = routineNotesInput.value.trim();
+        
+        generatePdf(clientName, routineName, routineNotes);
+    });
+    
+    // Event listener para editar rutina desde vista previa
+    editRoutineBtn.addEventListener('click', function() {
+        previewSection.classList.add('hidden');
+        
+        // Desplazar al inicio de los días
+        document.querySelector('.days-section').scrollIntoView({ behavior: 'smooth' });
+    });
+    
+    // ========== GENERACIÓN DE PDF ==========
+    
+    // Función para generar el PDF
+    function generatePdf(clientName, routineName, routineNotes) {
+        // Mostrar mensaje de carga
+        showNotification('Generando PDF, por favor espera...', 'info');
+        
+        // Crear contenido HTML para el PDF
+        const pdfContentHtml = createPdfContent(clientName, routineName, routineNotes);
+        
+        // Crear elemento temporal para html2canvas
+        const tempElement = document.createElement('div');
+        tempElement.style.width = '210mm'; // Tamaño A4
+        tempElement.style.padding = '20mm';
+        tempElement.style.backgroundColor = 'white';
+        tempElement.style.fontFamily = "'Poppins', sans-serif";
+        tempElement.style.fontSize = '12px';
+        tempElement.innerHTML = pdfContentHtml;
+        
+        document.body.appendChild(tempElement);
+        
+        // Generar PDF con html2canvas y jsPDF
+        html2canvas(tempElement, {
+            scale: 2, // Mejor calidad
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        }).then(canvas => {
+            // Eliminar elemento temporal
+            document.body.removeChild(tempElement);
+            
+            // Configurar PDF
+            const pdf = new jspdf.jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+            
+            // Calcular dimensiones
+            const imgWidth = 210; // Ancho A4 en mm
+            const pageHeight = 297; // Alto A4 en mm
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            
+            // Agregar imagen al PDF
+            const imgData = canvas.toDataURL('image/png');
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            // Si el contenido es más largo que una página, agregar páginas adicionales
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            
+            // Guardar PDF
+            const fileName = `Rutina_${routineName.replace(/\s+/g, '_')}_${clientName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
+            pdf.save(fileName);
+            
+            // Mostrar mensaje de éxito
+            showNotification(`PDF "${fileName}" generado y descargado correctamente`, 'success');
+        }).catch(error => {
+            console.error('Error al generar PDF:', error);
+            showNotification('Error al generar el PDF. Por favor, intenta nuevamente.', 'error');
+        });
+    }
+    
+    // Función para crear el contenido HTML del PDF con enlaces clickeables
+    function createPdfContent(clientName, routineName, routineNotes) {
+        // Crear secciones para cada día
+        let daysSections = '';
+        days.forEach(day => {
+            if (day.exercises.length === 0) return;
+            
+            // Crear filas de la tabla para los ejercicios del día
+            let tableRows = '';
+            day.exercises.forEach((exercise, index) => {
+                // Crear enlace de video clickeable
+                let videoCell = '<td>-</td>';
+                if (exercise.video) {
+                    const shortUrl = exercise.video.length > 30 ? 
+                        exercise.video.substring(0, 30) + '...' : exercise.video;
+                    
+                    videoCell = `<td><a href="${exercise.video}" style="color: #2196f3; text-decoration: underline;">${shortUrl}</a></td>`;
+                }
+                
+                tableRows += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${exercise.name}</strong></td>
+                        <td>${getMuscleLabel(exercise.muscle) || '-'}</td>
+                        <td>${exercise.sets}</td>
+                        <td>${exercise.reps}</td>
+                        <td>${exercise.rest || '60'} seg.</td>
+                        ${videoCell}
+                        <td>${exercise.notes || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            daysSections += `
+                <div style="margin-bottom: 25px; page-break-inside: avoid;">
+                    <div style="background-color: #e1bee7; color: #333; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ba68c8;">
+                        <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #ba68c8;">📅</span> ${day.name}
+                            ${day.focus ? `<span style="font-size: 12px; color: #666; margin-left: 10px;">(${day.focus})</span>` : ''}
+                        </div>
+                        ${day.notes ? `
+                        <div style="background-color: rgba(255, 255, 255, 0.7); border-radius: 6px; padding: 8px; margin-top: 8px; font-size: 11px; border-left: 3px solid #f06292;">
+                            <strong>Notas del día:</strong> ${day.notes}
+                        </div>
+                        ` : ''}
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead style="background-color: #f8bbd9;">
+                            <tr>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">#</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Ejercicio</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Grupo Muscular</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Series</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Repeticiones</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Descanso</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Video (Clickeable)</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Notas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        });
+        
+        // Crear contenido completo del PDF
+        return `
+            <div style="font-family: 'Poppins', sans-serif; color: #333; font-size: 12px;">
+                <!-- Encabezado -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 2px solid #ba68c8;">
+                    <div>
+                        <h1 style="color: #ba68c8; margin: 0 0 5px 0; font-size: 22px; display: flex; align-items: center;">
+                            <span style="margin-right: 10px;">🏋️</span> Luciana Gala
+                        </h1>
+                        <p style="color: #666; margin: 0; font-size: 13px;">Personal Trainer - Rutina Personalizada por Días</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <h3 style="margin: 0 0 5px 0; font-size: 15px;">RUTINA: <span style="color: #ba68c8;">${routineName}</span></h3>
+                        <h4 style="margin: 0 0 5px 0; font-size: 14px;">PARA: <span style="color: #2196f3;">${clientName}</span></h4>
+                        <p style="color: #666; margin: 0; font-size: 12px;">Fecha: ${formattedDate}</p>
+                        <p style="color: #666; margin: 0; font-size: 12px;">Días: ${days.length}</p>
+                    </div>
+                </div>
+                
+                <!-- Secciones por día -->
+                ${daysSections}
+                
+                <!-- Notas generales -->
+                ${routineNotes ? `
+                <div style="background-color: #f5f5f5; border-radius: 8px; padding: 18px; margin-top: 25px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+                    <h3 style="color: #2196f3; margin: 0 0 12px 0; font-size: 14px; display: flex; align-items: center;">
+                        <span style="margin-right: 8px;">📝</span> Notas Generales de la Rutina
+                    </h3>
+                    <div style="white-space: pre-line; line-height: 1.5;">
+                        ${routineNotes}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Pie de página -->
+                <div style="display: flex; justify-content: space-between; padding-top: 25px; margin-top: 25px; border-top: 1px solid #e0e0e0; font-size: 11px;">
+                    <div style="text-align: center; width: 40%;">
+                        <p style="margin: 0 0 20px 0;">_________________________</p>
+                        <p style="margin: 0 0 5px 0; font-weight: bold;">Luciana Gala</p>
+                        <p style="margin: 0 0 5px 0;">Personal Trainer</p>
+                        <p style="margin: 0;">Contacto: +54 3472 55-8896</p>
+                    </div>
+                    <div style="width: 55%;">
+                        <h4 style="color: #ba68c8; margin: 0 0 10px 0; font-size: 12px; display: flex; align-items: center;">
+                            <span style="margin-right: 8px;">💡</span> Consejos para el Entrenamiento:
+                        </h4>
+                        <ul style="margin: 0; padding-left: 20px; color: #666;">
+                            <li>Calienta durante 5-10 minutos antes de comenzar</li>
+                            <li>Mantén una buena hidratación durante el entrenamiento</li>
+                            <li>Realiza los ejercicios con técnica correcta</li>
+                            <li>Escucha a tu cuerpo y descansa cuando sea necesario</li>
+                            <li>Haz clic en los enlaces de video para ver la técnica</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // ========== FUNCIONES UTILITARIAS ==========
+    
+    // Función para obtener etiqueta legible del grupo muscular
+    function getMuscleLabel(muscleKey) {
+        const muscles = {
+            'piernas': 'Piernas',
+            'pecho': 'Pecho',
+            'espalda': 'Espalda',
+            'hombros': 'Hombros',
+            'brazos': 'Brazos',
+            'abdomen': 'Abdomen',
+            'cardio': 'Cardio',
+            'full-body': 'Full Body',
+            'otros': 'Otros'
+        };
+        
+        return muscles[muscleKey] || muscleKey;
+    }
+    
+    // Función para validar URL
+    function isValidUrl(string) {
+        try {
+            new URL(string);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    
+    // Función para mostrar notificaciones
+    function showNotification(message, type = 'info') {
+        // Crear elemento de notificación
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <span>${message}</span>
+            <button class="notification-close">&times;</button>
+        `;
+        
+        // Estilos de notificación
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        `;
+        
+        // Colores según tipo
+        const colors = {
+            'success': '#4caf50',
+            'error': '#f44336',
+            'warning': '#ff9800',
+            'info': '#2196f3'
+        };
+        
+        notification.style.backgroundColor = colors[type] || colors.info;
+        
+        // Botón para cerrar
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            margin-left: 15px;
+            padding: 0;
+            line-height: 1;
+        `;
+        
+        // Agregar al DOM
+        document.body.appendChild(notification);
+        
+        // Mostrar con animación
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+        
+        // Event listener para cerrar
+        closeBtn.addEventListener('click', function() {
+            notification.style.transform = 'translateX(120%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        });
+        
+        // Auto-eliminar después de 5 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.transform = 'translateX(120%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }, 5000);
+    }
+    
+    // ========== SCROLL TOP BUTTON ==========
+    
+    // Mostrar/ocultar botón de scroll top
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            scrollTopBtn.classList.add('visible');
+        } else {
+            scrollTopBtn.classList.remove('visible');
+        }
+    });
+    
+    // Event listener para botón de scroll top
+    scrollTopBtn.addEventListener('click', function() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+    
+    // ========== EJEMPLO INICIAL (OPCIONAL) ==========
+    
+    // Descomenta el siguiente bloque si quieres cargar un ejemplo al iniciar
+    /*
+    setTimeout(() => {
+        // Agregar días de ejemplo
+        const exampleDays = [
+            {
+                name: 'Lunes',
+                focus: 'Piernas y Abdomen',
+                notes: 'Enfocarse en técnica, especialmente en sentadillas',
+                exercises: [
+                    {
+                        name: "Sentadillas",
+                        muscle: "piernas",
+                        sets: "4",
+                        reps: "10-12",
+                        rest: "60",
+                        video: "https://www.youtube.com/watch?v=aclHkVaku9U",
+                        notes: "Mantener la espalda recta y bajar hasta que los muslos queden paralelos al suelo."
+                    },
+                    {
+                        name: "Prensa de Piernas",
+                        muscle: "piernas",
+                        sets: "3",
+                        reps: "12-15",
+                        rest: "60",
+                        video: "https://www.youtube.com/watch?v=IZxyjW7MPJQ",
+                        notes: "Controlar el movimiento, no bloquear las rodillas al extender."
+                    }
+                ]
+            },
+            {
+                name: 'Miércoles',
+                focus: 'Pecho y Espalda',
+                notes: 'Calentar hombros antes de comenzar',
+                exercises: [
+                    {
+                        name: "Press de Banca",
+                        muscle: "pecho",
+                        sets: "4",
+                        reps: "8-10",
+                        rest: "90",
+                        video: "https://www.youtube.com/watch?v=vc1E5CfRfos",
+                        notes: "Controlar el movimiento tanto al bajar como al subir."
+                    }
+                ]
+            }
+        ];
+        
+        exampleDays.forEach(day => {
+            // Agregar a días usados
+            usedDays.push(day.name);
+            
+            // Agregar día
+            day.id = Date.now() + Math.random();
+            days.push(day);
+        });
+        
+        updateDaysList();
+        updateDaysCounter();
+        
+        showNotification("Ejemplo de rutina cargado. Puedes editarlo o agregar más días.", "info");
+    }, 1000);
+    */
+    
+    // ========== INICIALIZACIÓN ==========
+    
+    console.log("Sistema de creación de rutinas por días cargado correctamente");
+    console.log("Instrucciones:");
+    console.log("1. Usa 'Agregar Día' para crear días (Lunes, Martes, etc.)");
+    console.log("2. En cada día, agrega ejercicios usando 'Agregar Ejercicio'");
+    console.log("3. Usa 'Vista Previa' para ver cómo quedará el PDF");
+    console.log("4. Usa 'Generar PDF' para crear y descargar la rutina completa");
+    console.log("5. Los enlaces de video en el PDF serán clickeables");
+});
