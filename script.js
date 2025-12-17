@@ -1,40 +1,58 @@
 // Esperar a que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', function() {
     // Variables globales
-    let days = []; // Array para almacenar los días con sus ejercicios
-    let usedDays = []; // Para controlar qué días ya están usados
+    let days = [];
+    let usedDays = [];
+    let currentSwipeTarget = null;
+    let swipeProgress = 0;
+    let isSwiping = false;
     
-    // Elementos del DOM
-    const daysContainer = document.getElementById('days-container');
+    // Elementos del DOM para móvil
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mainNav = document.getElementById('main-nav');
+    const closeInfoBtn = document.getElementById('close-info');
+    const infoPanel = document.querySelector('.info-panel.mobile-info');
     const daysCountElement = document.getElementById('days-count');
+    const exercisesCountElement = document.getElementById('exercises-count');
+    const videosCountElement = document.getElementById('videos-count');
+    const floatingAddDay = document.getElementById('floating-add-day');
+    const floatingPreview = document.getElementById('floating-preview');
+    const floatingGenerate = document.getElementById('floating-generate');
+    const emptyAddDay = document.getElementById('empty-add-day');
+    const expandAllBtn = document.getElementById('expand-all');
+    const daysContainer = document.getElementById('days-container');
     const addDayBtn = document.getElementById('add-day-btn');
     const previewBtn = document.getElementById('preview-btn');
     const generatePdfBtn = document.getElementById('generate-pdf-btn');
     const dayModal = document.getElementById('day-modal');
     const dayModalTitle = document.getElementById('day-modal-title');
     const dayForm = document.getElementById('day-form');
+    const closeDayModal = document.getElementById('close-day-modal');
     const cancelDayBtn = document.getElementById('cancel-day-btn');
     const exerciseModal = document.getElementById('exercise-modal');
     const exerciseModalTitle = document.getElementById('exercise-modal-title');
     const exerciseModalSubtitle = document.getElementById('exercise-modal-subtitle');
     const exerciseForm = document.getElementById('exercise-form');
+    const closeExerciseModal = document.getElementById('close-exercise-modal');
     const cancelExerciseBtn = document.getElementById('cancel-exercise-btn');
-    const previewSection = document.querySelector('.preview-section');
+    const previewSection = document.getElementById('preview-section');
     const closePreviewBtn = document.getElementById('close-preview');
-    const pdfContent = document.getElementById('pdf-content');
+    const pdfPreview = document.getElementById('pdf-preview');
+    const downloadPdfBtn = document.getElementById('download-pdf-btn');
+    const editRoutineBtn = document.getElementById('edit-routine-btn');
     const clientModal = document.getElementById('client-modal');
     const clientNameInput = document.getElementById('client-name');
     const routineNameInput = document.getElementById('routine-name');
     const routineNotesInput = document.getElementById('routine-notes');
+    const closeClientModal = document.getElementById('close-client-modal');
     const confirmClientBtn = document.getElementById('confirm-client-btn');
     const cancelClientBtn = document.getElementById('cancel-client-btn');
-    const downloadPdfBtn = document.getElementById('download-pdf-btn');
-    const editRoutineBtn = document.getElementById('edit-routine-btn');
-    const scrollTopBtn = document.getElementById('scroll-top-btn');
-    const currentDatePreview = document.getElementById('current-date-preview');
-    const routineDaysPreview = document.getElementById('routine-days-preview');
-    const routineNamePreview = document.getElementById('routine-name-preview');
-    const clientNamePreview = document.getElementById('client-name-preview');
+    const mainFab = document.getElementById('main-fab');
+    const fabOptions = document.querySelector('.fab-options');
+    const fabAddDay = document.getElementById('fab-add-day');
+    const fabQuickExercise = document.getElementById('fab-quick-exercise');
+    const fabPreview = document.getElementById('fab-preview');
+    const toast = document.getElementById('toast');
     
     // Variables para edición
     let isEditingDay = false;
@@ -43,35 +61,108 @@ document.addEventListener('DOMContentLoaded', function() {
     let editingExerciseDayIndex = null;
     let editingExerciseIndex = null;
     
-    // Inicializar la fecha actual en la vista previa
-    const currentDate = new Date();
-    const formattedDate = currentDate.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-    currentDatePreview.textContent = formattedDate;
-    
-    // Días de la semana en orden
+    // Días de la semana
     const weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    
+    // ========== INICIALIZACIÓN ==========
+    
+    // Ocultar panel de información después de 10 segundos
+    setTimeout(() => {
+        infoPanel.classList.add('hidden');
+    }, 10000);
+    
+    // Cargar datos guardados (si existen)
+    loadSavedData();
+    
+    // ========== MANEJO DE INTERFAZ MÓVIL ==========
+    
+    // Menú hamburguesa
+    mobileMenuBtn.addEventListener('click', function() {
+        mainNav.classList.toggle('hidden');
+        this.querySelector('i').classList.toggle('fa-bars');
+        this.querySelector('i').classList.toggle('fa-times');
+    });
+    
+    // Cerrar panel de información
+    closeInfoBtn.addEventListener('click', function() {
+        infoPanel.classList.add('hidden');
+    });
+    
+    // Botones flotantes
+    floatingAddDay.addEventListener('click', addDay);
+    floatingPreview.addEventListener('click', showPreview);
+    floatingGenerate.addEventListener('click', generatePDF);
+    emptyAddDay.addEventListener('click', addDay);
+    
+    // Expandir/contraer todos los días
+    expandAllBtn.addEventListener('click', function() {
+        const dayCards = document.querySelectorAll('.day-card');
+        const isExpanded = this.querySelector('i').classList.contains('fa-expand-alt');
+        
+        dayCards.forEach(card => {
+            const exercises = card.querySelector('.exercises-container-mobile');
+            if (exercises) {
+                if (isExpanded) {
+                    exercises.style.display = 'block';
+                } else {
+                    exercises.style.display = 'none';
+                }
+            }
+        });
+        
+        this.querySelector('i').classList.toggle('fa-expand-alt');
+        this.querySelector('i').classList.toggle('fa-compress-alt');
+    });
+    
+    // FAB (Floating Action Button)
+    mainFab.addEventListener('click', function() {
+        this.classList.toggle('active');
+        fabOptions.classList.toggle('show');
+    });
+    
+    fabAddDay.addEventListener('click', function() {
+        addDay();
+        mainFab.classList.remove('active');
+        fabOptions.classList.remove('show');
+    });
+    
+    fabQuickExercise.addEventListener('click', function() {
+        // Agregar ejercicio al último día o crear uno nuevo
+        if (days.length > 0) {
+            const lastDayIndex = days.length - 1;
+            addExerciseToDay(lastDayIndex);
+        } else {
+            showToast('Primero agrega un día', 'warning');
+        }
+        mainFab.classList.remove('active');
+        fabOptions.classList.remove('show');
+    });
+    
+    fabPreview.addEventListener('click', function() {
+        showPreview();
+        mainFab.classList.remove('active');
+        fabOptions.classList.remove('show');
+    });
+    
+    // Cerrar FAB al hacer clic fuera
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.fab-container')) {
+            mainFab.classList.remove('active');
+            fabOptions.classList.remove('show');
+        }
+    });
     
     // ========== FUNCIONES PARA MANEJAR DÍAS ==========
     
-    // Función para agregar un nuevo día
     function addDay() {
-        // Mostrar modal para seleccionar día
-        dayModalTitle.textContent = "Agregar Día a la Rutina";
+        dayModalTitle.textContent = "Nuevo Día";
         document.getElementById('modal-day-index').value = '';
         dayForm.reset();
         
-        // Filtrar días disponibles (que no estén ya en uso)
+        // Filtrar días disponibles
         const daySelect = document.getElementById('day-name');
-        const currentOptions = Array.from(daySelect.options);
-        
-        // Mantener solo la opción por defecto
         daySelect.innerHTML = '<option value="">Seleccionar día...</option>';
         
-        // Agregar opciones disponibles
         weekDays.forEach(day => {
             if (!usedDays.includes(day)) {
                 const option = document.createElement('option');
@@ -81,25 +172,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Agregar opciones de "Día X"
-        for (let i = 1; i <= 7; i++) {
-            const dayName = `Día ${i}`;
-            if (!usedDays.includes(dayName)) {
-                const option = document.createElement('option');
-                option.value = dayName;
-                option.textContent = dayName;
-                daySelect.appendChild(option);
-            }
-        }
-        
+        // Abrir modal con animación
         dayModal.classList.remove('hidden');
+        setTimeout(() => {
+            dayModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
+        }, 10);
     }
     
-    // Función para guardar un día (nuevo o editado)
     function saveDay(dayData) {
         if (isEditingDay && editingDayIndex !== null) {
-            // Editar día existente
-            // Liberar el nombre anterior
+            // Liberar nombre anterior
             const oldDayName = days[editingDayIndex].name;
             const oldIndex = usedDays.indexOf(oldDayName);
             if (oldIndex > -1) {
@@ -110,14 +192,14 @@ document.addEventListener('DOMContentLoaded', function() {
             dayData.id = days[editingDayIndex].id;
             days[editingDayIndex] = dayData;
             
-            showNotification(`Día "${dayData.name}" actualizado`, 'success');
+            showToast(`Día "${dayData.name}" actualizado`, 'success');
         } else {
-            // Agregar nuevo día
+            // Nuevo día
             dayData.id = Date.now() + Math.random();
             dayData.exercises = [];
             days.push(dayData);
             
-            showNotification(`Día "${dayData.name}" agregado a la rutina`, 'success');
+            showToast(`Día "${dayData.name}" agregado`, 'success');
         }
         
         // Agregar a días usados
@@ -125,62 +207,46 @@ document.addEventListener('DOMContentLoaded', function() {
             usedDays.push(dayData.name);
         }
         
-        // Ordenar días según orden de la semana
+        // Ordenar días
         days.sort((a, b) => {
             const aIndex = weekDays.indexOf(a.name);
             const bIndex = weekDays.indexOf(b.name);
-            
-            // Si ambos están en weekDays, ordenar por ese orden
-            if (aIndex > -1 && bIndex > -1) {
-                return aIndex - bIndex;
-            }
-            // Si solo a está en weekDays, a va primero
+            if (aIndex > -1 && bIndex > -1) return aIndex - bIndex;
             if (aIndex > -1) return -1;
-            // Si solo b está en weekDays, b va primero
             if (bIndex > -1) return 1;
-            // Si ninguno está en weekDays, ordenar por número (Día 1, Día 2, etc.)
-            const aNum = parseInt(a.name.replace('Día ', '')) || 0;
-            const bNum = parseInt(b.name.replace('Día ', '')) || 0;
-            return aNum - bNum;
+            return 0;
         });
         
         updateDaysList();
-        updateDaysCounter();
-        
-        // Cerrar modal
-        dayModal.classList.add('hidden');
-        isEditingDay = false;
-        editingDayIndex = null;
+        updateStats();
+        saveData();
+        closeDayModalFunc();
     }
     
-    // Función para editar un día
     function editDay(index) {
         const day = days[index];
         
-        // Cargar datos en el formulario
+        // Cargar datos
         document.getElementById('modal-day-index').value = index;
         document.getElementById('day-name').value = day.name;
         document.getElementById('day-focus').value = day.focus || '';
         document.getElementById('day-notes').value = day.notes || '';
         
-        // Configurar modal para edición
-        dayModalTitle.textContent = `Editar Día: ${day.name}`;
+        // Configurar modal
+        dayModalTitle.textContent = `Editar: ${day.name}`;
         
         // Filtrar días disponibles
         const daySelect = document.getElementById('day-name');
-        const currentOptions = Array.from(daySelect.options);
-        
-        // Mantener solo la opción por defecto
         daySelect.innerHTML = '<option value="">Seleccionar día...</option>';
         
-        // Agregar la opción actual primero
+        // Agregar opción actual
         const currentOption = document.createElement('option');
         currentOption.value = day.name;
         currentOption.textContent = day.name;
         currentOption.selected = true;
         daySelect.appendChild(currentOption);
         
-        // Agregar otras opciones disponibles
+        // Otras opciones
         weekDays.forEach(dayName => {
             if (!usedDays.includes(dayName) || dayName === day.name) {
                 const option = document.createElement('option');
@@ -190,223 +256,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Agregar opciones de "Día X"
-        for (let i = 1; i <= 7; i++) {
-            const dayName = `Día ${i}`;
-            if (!usedDays.includes(dayName) || dayName === day.name) {
-                const option = document.createElement('option');
-                option.value = dayName;
-                option.textContent = dayName;
-                daySelect.appendChild(option);
-            }
-        }
-        
         isEditingDay = true;
         editingDayIndex = index;
+        
+        // Abrir modal
         dayModal.classList.remove('hidden');
+        setTimeout(() => {
+            dayModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
+        }, 10);
     }
     
-    // Función para eliminar un día
     function removeDay(index) {
         const day = days[index];
         
-        if (!confirm(`¿Estás seguro de que deseas eliminar el día "${day.name}" y todos sus ejercicios?`)) {
-            return;
-        }
-        
-        // Eliminar día
-        days.splice(index, 1);
-        
-        // Liberar el nombre del día
-        const dayIndex = usedDays.indexOf(day.name);
-        if (dayIndex > -1) {
-            usedDays.splice(dayIndex, 1);
-        }
-        
-        updateDaysList();
-        updateDaysCounter();
-        
-        showNotification(`Día "${day.name}" eliminado`, 'info');
-    }
-    
-    // Función para actualizar la lista de días en la interfaz
-    function updateDaysList() {
-        // Limpiar contenedor
-        daysContainer.innerHTML = '';
-        
-        // Si no hay días, mostrar estado vacío
-        if (days.length === 0) {
-            daysContainer.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-calendar-day fa-3x"></i>
-                    <h3>No hay días en la rutina</h3>
-                    <p>Comienza agregando un día usando el botón "Agregar Día".</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Crear tarjetas para cada día
-        days.forEach((day, dayIndex) => {
-            const dayCard = document.createElement('div');
-            dayCard.className = 'day-card';
-            dayCard.dataset.dayId = day.id;
-            dayCard.dataset.dayIndex = dayIndex;
+        // Mostrar confirmación con swipe
+        showSwipeConfirm(() => {
+            // Eliminar día
+            days.splice(index, 1);
             
-            // Crear HTML para ejercicios del día
-            let exercisesHTML = '';
-            if (day.exercises.length === 0) {
-                exercisesHTML = `
-                    <div class="no-exercises">
-                        <i class="fas fa-dumbbell"></i>
-                        <p>No hay ejercicios en este día. Agrega el primero.</p>
-                    </div>
-                `;
-            } else {
-                day.exercises.forEach((exercise, exIndex) => {
-                    // Crear enlace de video si existe
-                    let videoLink = '';
-                    if (exercise.video) {
-                        videoLink = `
-                            <a href="${exercise.video}" target="_blank" class="video-link">
-                                <i class="fab fa-youtube"></i> Ver video de demostración
-                            </a>
-                        `;
-                    }
-                    
-                    exercisesHTML += `
-                        <div class="exercise-card">
-                            <div class="exercise-header">
-                                <div class="exercise-title">
-                                    <div class="exercise-number">${exIndex + 1}</div>
-                                    <div class="exercise-name">${exercise.name}</div>
-                                    ${exercise.muscle ? `<span class="exercise-muscle">${getMuscleLabel(exercise.muscle)}</span>` : ''}
-                                </div>
-                                <div class="exercise-actions">
-                                    <button class="exercise-action-btn edit-exercise-btn" data-day-index="${dayIndex}" data-exercise-index="${exIndex}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="exercise-action-btn delete-exercise-btn" data-day-index="${dayIndex}" data-exercise-index="${exIndex}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="exercise-details">
-                                <div class="detail-item">
-                                    <span class="detail-label">Series:</span>
-                                    <span class="detail-value">${exercise.sets}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Repeticiones:</span>
-                                    <span class="detail-value">${exercise.reps}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Descanso:</span>
-                                    <span class="detail-value">${exercise.rest || '60'} seg.</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Video:</span>
-                                    <div class="detail-value">
-                                        ${exercise.video ? videoLink : '<span style="color:#999">No especificado</span>'}
-                                    </div>
-                                </div>
-                            </div>
-                            ${exercise.notes ? `
-                            <div class="exercise-notes">
-                                <span class="detail-label">Notas:</span>
-                                <div class="detail-value">${exercise.notes}</div>
-                            </div>
-                            ` : ''}
-                        </div>
-                    `;
-                });
+            // Liberar nombre
+            const dayIndex = usedDays.indexOf(day.name);
+            if (dayIndex > -1) {
+                usedDays.splice(dayIndex, 1);
             }
             
-            // Crear HTML del día
-            dayCard.innerHTML = `
-                <div class="day-header">
-                    <div class="day-title">
-                        <div class="day-badge">
-                            <i class="fas fa-calendar-day"></i> ${day.name}
-                        </div>
-                        <div class="day-info">
-                            <div class="day-name">${day.focus ? `Enfoque: ${day.focus}` : 'Entrenamiento del día'}</div>
-                            <div class="day-focus">${day.exercises.length} ejercicio${day.exercises.length !== 1 ? 's' : ''}</div>
-                        </div>
-                    </div>
-                    <div class="day-actions">
-                        <button class="day-action-btn add-exercise-btn" data-day-index="${dayIndex}">
-                            <i class="fas fa-plus"></i> Agregar Ejercicio
-                        </button>
-                        <button class="day-action-btn edit-day-btn" data-day-index="${dayIndex}">
-                            <i class="fas fa-edit"></i> Editar Día
-                        </button>
-                        <button class="day-action-btn remove-day-btn" data-day-index="${dayIndex}">
-                            <i class="fas fa-trash"></i> Eliminar
-                        </button>
-                    </div>
-                </div>
-                ${day.notes ? `
-                <div class="day-notes">
-                    <p><strong>Notas:</strong> ${day.notes}</p>
-                </div>
-                ` : ''}
-                <div class="exercises-container">
-                    ${exercisesHTML}
-                </div>
-            `;
-            
-            daysContainer.appendChild(dayCard);
+            updateDaysList();
+            updateStats();
+            saveData();
+            showToast(`Día "${day.name}" eliminado`, 'info');
         });
-        
-        // Agregar event listeners a los botones de los días
-        document.querySelectorAll('.day-actions button').forEach(button => {
-            button.addEventListener('click', function() {
-                const dayIndex = parseInt(this.dataset.dayIndex);
-                const action = this.classList.contains('add-exercise-btn') ? 'add-exercise' :
-                              this.classList.contains('edit-day-btn') ? 'edit-day' :
-                              this.classList.contains('remove-day-btn') ? 'remove-day' : null;
-                
-                if (action === 'add-exercise') {
-                    addExerciseToDay(dayIndex);
-                } else if (action === 'edit-day') {
-                    editDay(dayIndex);
-                } else if (action === 'remove-day') {
-                    removeDay(dayIndex);
-                }
-            });
-        });
-        
-        // Agregar event listeners a los botones de ejercicios
-        document.querySelectorAll('.exercise-actions button').forEach(button => {
-            button.addEventListener('click', function() {
-                const dayIndex = parseInt(this.dataset.dayIndex);
-                const exerciseIndex = parseInt(this.dataset.exerciseIndex);
-                
-                if (this.classList.contains('edit-exercise-btn')) {
-                    editExercise(dayIndex, exerciseIndex);
-                } else if (this.classList.contains('delete-exercise-btn')) {
-                    deleteExercise(dayIndex, exerciseIndex);
-                }
-            });
-        });
-    }
-    
-    // Función para actualizar el contador de días
-    function updateDaysCounter() {
-        daysCountElement.textContent = days.length;
-        routineDaysPreview.textContent = days.length;
     }
     
     // ========== FUNCIONES PARA MANEJAR EJERCICIOS ==========
     
-    // Función para agregar un ejercicio a un día
     function addExerciseToDay(dayIndex) {
         const day = days[dayIndex];
         
-        // Configurar modal para agregar ejercicio
-        exerciseModalTitle.textContent = "Agregar Ejercicio";
-        exerciseModalSubtitle.textContent = `Día: ${day.name}${day.focus ? ` (${day.focus})` : ''}`;
+        exerciseModalTitle.textContent = "Nuevo Ejercicio";
+        exerciseModalSubtitle.textContent = `Día: ${day.name}`;
         document.getElementById('modal-day-index').value = dayIndex;
         document.getElementById('modal-exercise-index').value = '';
         exerciseForm.reset();
@@ -417,21 +304,23 @@ document.addEventListener('DOMContentLoaded', function() {
         editingExerciseDayIndex = null;
         editingExerciseIndex = null;
         
+        // Abrir modal
         exerciseModal.classList.remove('hidden');
+        setTimeout(() => {
+            exerciseModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
+        }, 10);
     }
     
-    // Función para editar un ejercicio
     function editExercise(dayIndex, exerciseIndex) {
         const day = days[dayIndex];
         const exercise = day.exercises[exerciseIndex];
         
-        // Configurar modal para editar ejercicio
         exerciseModalTitle.textContent = "Editar Ejercicio";
-        exerciseModalSubtitle.textContent = `Día: ${day.name} - Ejercicio: ${exercise.name}`;
+        exerciseModalSubtitle.textContent = `Día: ${day.name}`;
         document.getElementById('modal-day-index').value = dayIndex;
         document.getElementById('modal-exercise-index').value = exerciseIndex;
         
-        // Cargar datos del ejercicio
+        // Cargar datos
         document.getElementById('exercise-name').value = exercise.name;
         document.getElementById('exercise-muscle').value = exercise.muscle || '';
         document.getElementById('exercise-sets').value = exercise.sets;
@@ -444,53 +333,49 @@ document.addEventListener('DOMContentLoaded', function() {
         editingExerciseDayIndex = dayIndex;
         editingExerciseIndex = exerciseIndex;
         
+        // Abrir modal
         exerciseModal.classList.remove('hidden');
+        setTimeout(() => {
+            exerciseModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
+        }, 10);
     }
     
-    // Función para guardar un ejercicio (nuevo o editado)
     function saveExercise(exerciseData) {
         const dayIndex = parseInt(document.getElementById('modal-day-index').value);
         
         if (isEditingExercise && editingExerciseDayIndex !== null && editingExerciseIndex !== null) {
-            // Editar ejercicio existente
+            // Editar ejercicio
             days[editingExerciseDayIndex].exercises[editingExerciseIndex] = exerciseData;
-            showNotification(`Ejercicio "${exerciseData.name}" actualizado`, 'success');
+            showToast(`Ejercicio "${exerciseData.name}" actualizado`, 'success');
         } else {
-            // Agregar nuevo ejercicio
+            // Nuevo ejercicio
             days[dayIndex].exercises.push(exerciseData);
-            showNotification(`Ejercicio "${exerciseData.name}" agregado al día`, 'success');
+            showToast(`Ejercicio "${exerciseData.name}" agregado`, 'success');
         }
         
         updateDaysList();
-        exerciseModal.classList.add('hidden');
-        
-        // Desplazar al día correspondiente
-        setTimeout(() => {
-            const dayElement = document.querySelector(`[data-day-index="${dayIndex}"]`);
-            if (dayElement) {
-                dayElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        }, 100);
+        updateStats();
+        saveData();
+        closeExerciseModalFunc();
     }
     
-    // Función para eliminar un ejercicio
     function deleteExercise(dayIndex, exerciseIndex) {
         const exercise = days[dayIndex].exercises[exerciseIndex];
         
-        if (!confirm(`¿Estás seguro de que deseas eliminar el ejercicio "${exercise.name}"?`)) {
-            return;
-        }
-        
-        // Eliminar ejercicio
-        days[dayIndex].exercises.splice(exerciseIndex, 1);
-        
-        updateDaysList();
-        showNotification(`Ejercicio "${exercise.name}" eliminado`, 'info');
+        // Mostrar confirmación con swipe
+        showSwipeConfirm(() => {
+            // Eliminar ejercicio
+            days[dayIndex].exercises.splice(exerciseIndex, 1);
+            
+            updateDaysList();
+            updateStats();
+            saveData();
+            showToast(`Ejercicio "${exercise.name}" eliminado`, 'info');
+        });
     }
     
     // ========== MANEJO DE FORMULARIOS ==========
     
-    // Event listener para formulario de día
     dayForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -501,14 +386,13 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         if (!dayData.name) {
-            showNotification('Debes seleccionar un día', 'error');
+            showToast('Selecciona un día', 'error');
             return;
         }
         
         saveDay(dayData);
     });
     
-    // Event listener para formulario de ejercicio
     exerciseForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -522,101 +406,355 @@ document.addEventListener('DOMContentLoaded', function() {
             notes: document.getElementById('exercise-notes').value.trim()
         };
         
-        // Validar datos requeridos
+        // Validaciones
         if (!exerciseData.name) {
-            showNotification('El nombre del ejercicio es requerido', 'error');
+            showToast('Nombre del ejercicio requerido', 'error');
             return;
         }
         
         if (!exerciseData.sets || exerciseData.sets < 1) {
-            showNotification('Debe especificar al menos 1 serie', 'error');
+            showToast('Mínimo 1 serie', 'error');
             return;
         }
         
         if (!exerciseData.reps) {
-            showNotification('Las repeticiones son requeridas', 'error');
+            showToast('Repeticiones requeridas', 'error');
             return;
         }
         
-        // Validar URL de video si se proporcionó
         if (exerciseData.video && !isValidUrl(exerciseData.video)) {
-            showNotification('La URL del video no es válida', 'error');
+            showToast('URL de video inválida', 'error');
             return;
         }
         
         saveExercise(exerciseData);
     });
     
-    // Event listeners para cancelar modales
-    cancelDayBtn.addEventListener('click', function() {
-        dayModal.classList.add('hidden');
+    // ========== MANEJO DE MODALES ==========
+    
+    function closeDayModalFunc() {
+        dayModal.querySelector('.mobile-modal-content').classList.remove('slide-in-up');
+        dayModal.querySelector('.mobile-modal-content').classList.add('slide-out-down');
+        
+        setTimeout(() => {
+            dayModal.classList.add('hidden');
+            dayModal.querySelector('.mobile-modal-content').classList.remove('slide-out-down');
+        }, 300);
+        
         isEditingDay = false;
         editingDayIndex = null;
-    });
+    }
     
-    cancelExerciseBtn.addEventListener('click', function() {
-        exerciseModal.classList.add('hidden');
+    function closeExerciseModalFunc() {
+        exerciseModal.querySelector('.mobile-modal-content').classList.remove('slide-in-up');
+        exerciseModal.querySelector('.mobile-modal-content').classList.add('slide-out-down');
+        
+        setTimeout(() => {
+            exerciseModal.classList.add('hidden');
+            exerciseModal.querySelector('.mobile-modal-content').classList.remove('slide-out-down');
+        }, 300);
+        
         isEditingExercise = false;
         editingExerciseDayIndex = null;
         editingExerciseIndex = null;
+    }
+    
+    function closeClientModalFunc() {
+        clientModal.querySelector('.mobile-modal-content').classList.remove('slide-in-up');
+        clientModal.querySelector('.mobile-modal-content').classList.add('slide-out-down');
+        
+        setTimeout(() => {
+            clientModal.classList.add('hidden');
+            clientModal.querySelector('.mobile-modal-content').classList.remove('slide-out-down');
+        }, 300);
+    }
+    
+    // Event listeners para cerrar modales
+    closeDayModal.addEventListener('click', closeDayModalFunc);
+    cancelDayBtn.addEventListener('click', closeDayModalFunc);
+    
+    closeExerciseModal.addEventListener('click', closeExerciseModalFunc);
+    cancelExerciseBtn.addEventListener('click', closeExerciseModalFunc);
+    
+    closeClientModal.addEventListener('click', closeClientModalFunc);
+    cancelClientBtn.addEventListener('click', closeClientModalFunc);
+    
+    // Cerrar modal al tocar fuera
+    [dayModal, exerciseModal, clientModal].forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                if (this === dayModal) closeDayModalFunc();
+                if (this === exerciseModal) closeExerciseModalFunc();
+                if (this === clientModal) closeClientModalFunc();
+            }
+        });
     });
     
-    // Event listener para botón agregar día
-    addDayBtn.addEventListener('click', addDay);
+    // ========== ACTUALIZACIÓN DE INTERFAZ ==========
     
-    // ========== VISTA PREVIA Y GENERACIÓN DE PDF ==========
-    
-    // Función para mostrar/ocultar vista previa
-    previewBtn.addEventListener('click', function() {
+    function updateDaysList() {
+        daysContainer.innerHTML = '';
+        
         if (days.length === 0) {
-            showNotification('No hay días en la rutina. Agrega al menos un día.', 'warning');
+            daysContainer.innerHTML = `
+                <div class="empty-state-mobile">
+                    <div class="empty-icon">
+                        <i class="fas fa-calendar-plus fa-3x"></i>
+                    </div>
+                    <h3>No hay días en la rutina</h3>
+                    <p>Toca el botón "Agregar Día" para comenzar</p>
+                    <button id="empty-add-day" class="btn-primary btn-empty">
+                        <i class="fas fa-calendar-plus"></i> Agregar mi primer día
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('empty-add-day').addEventListener('click', addDay);
             return;
         }
         
-        // Verificar si hay al menos un ejercicio en algún día
+        days.forEach((day, dayIndex) => {
+            const dayCard = document.createElement('div');
+            dayCard.className = 'day-card';
+            dayCard.dataset.dayId = day.id;
+            
+            // Crear HTML de ejercicios
+            let exercisesHTML = '';
+            if (day.exercises.length === 0) {
+                exercisesHTML = `
+                    <div class="no-exercises-mobile">
+                        <i class="fas fa-dumbbell"></i>
+                        <p>No hay ejercicios. Agrega el primero.</p>
+                    </div>
+                `;
+            } else {
+                day.exercises.forEach((exercise, exIndex) => {
+                    let videoLink = '';
+                    if (exercise.video) {
+                        videoLink = `
+                            <a href="${exercise.video}" target="_blank" class="video-link-mobile">
+                                <i class="fab fa-youtube"></i> Ver video
+                            </a>
+                        `;
+                    }
+                    
+                    exercisesHTML += `
+                        <div class="exercise-card-mobile" data-exercise-index="${exIndex}">
+                            <div class="exercise-header-mobile">
+                                <div class="exercise-title-mobile">
+                                    <div class="exercise-number-mobile">${exIndex + 1}</div>
+                                    <div class="exercise-name-mobile">${exercise.name}</div>
+                                    ${exercise.muscle ? `<span class="exercise-muscle-mobile">${getMuscleLabel(exercise.muscle)}</span>` : ''}
+                                </div>
+                                <div class="exercise-actions-mobile">
+                                    <button class="exercise-action-btn-mobile edit-exercise-btn-mobile" 
+                                            data-day-index="${dayIndex}" 
+                                            data-exercise-index="${exIndex}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="exercise-action-btn-mobile delete-exercise-btn-mobile"
+                                            data-day-index="${dayIndex}"
+                                            data-exercise-index="${exIndex}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="exercise-details-mobile">
+                                <div class="detail-item-mobile">
+                                    <span class="detail-label-mobile">Series:</span>
+                                    <span class="detail-value-mobile">${exercise.sets}</span>
+                                </div>
+                                <div class="detail-item-mobile">
+                                    <span class="detail-label-mobile">Reps:</span>
+                                    <span class="detail-value-mobile">${exercise.reps}</span>
+                                </div>
+                                <div class="detail-item-mobile">
+                                    <span class="detail-label-mobile">Descanso:</span>
+                                    <span class="detail-value-mobile">${exercise.rest || '60'} seg</span>
+                                </div>
+                                <div class="detail-item-mobile">
+                                    <span class="detail-label-mobile">Video:</span>
+                                    <div class="detail-value-mobile">
+                                        ${exercise.video ? videoLink : '<span style="color:#999">-</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                            ${exercise.notes ? `
+                            <div class="exercise-notes-mobile">
+                                <span class="detail-label-mobile">Notas:</span>
+                                <div class="detail-value-mobile">${exercise.notes}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            }
+            
+            // HTML del día
+            dayCard.innerHTML = `
+                <div class="day-header-mobile">
+                    <div class="day-badge-mobile">
+                        <i class="fas fa-calendar-day"></i> ${day.name}
+                    </div>
+                    <div class="day-info-mobile">
+                        <div class="day-name-mobile">${day.focus || 'Entrenamiento'}</div>
+                        <div class="day-focus-mobile">${day.exercises.length} ejercicio${day.exercises.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div class="day-actions-mobile">
+                        <button class="day-action-btn-mobile add-exercise-btn-mobile" data-day-index="${dayIndex}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="day-action-btn-mobile edit-day-btn-mobile" data-day-index="${dayIndex}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="day-action-btn-mobile remove-day-btn-mobile" data-day-index="${dayIndex}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${day.notes ? `
+                <div class="day-notes-mobile">
+                    <p>${day.notes}</p>
+                </div>
+                ` : ''}
+                <div class="exercises-container-mobile">
+                    ${exercisesHTML}
+                </div>
+            `;
+            
+            daysContainer.appendChild(dayCard);
+        });
+        
+        // Agregar event listeners
+        attachDayEventListeners();
+    }
+    
+    function attachDayEventListeners() {
+        // Botones de días
+        document.querySelectorAll('.day-action-btn-mobile').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dayIndex = parseInt(this.dataset.dayIndex);
+                
+                if (this.classList.contains('add-exercise-btn-mobile')) {
+                    addExerciseToDay(dayIndex);
+                } else if (this.classList.contains('edit-day-btn-mobile')) {
+                    editDay(dayIndex);
+                } else if (this.classList.contains('remove-day-btn-mobile')) {
+                    removeDay(dayIndex);
+                }
+            });
+        });
+        
+        // Botones de ejercicios
+        document.querySelectorAll('.exercise-action-btn-mobile').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dayIndex = parseInt(this.dataset.dayIndex);
+                const exerciseIndex = parseInt(this.dataset.exerciseIndex);
+                
+                if (this.classList.contains('edit-exercise-btn-mobile')) {
+                    editExercise(dayIndex, exerciseIndex);
+                } else if (this.classList.contains('delete-exercise-btn-mobile')) {
+                    deleteExercise(dayIndex, exerciseIndex);
+                }
+            });
+        });
+        
+        // Swipe para eliminar en ejercicios
+        document.querySelectorAll('.exercise-card-mobile').forEach(card => {
+            let startX = 0;
+            let currentX = 0;
+            let isSwipingCard = false;
+            
+            card.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+                isSwipingCard = true;
+            });
+            
+            card.addEventListener('touchmove', function(e) {
+                if (!isSwipingCard) return;
+                
+                currentX = e.touches[0].clientX;
+                const diff = startX - currentX;
+                
+                if (diff > 0) { // Swipe izquierda
+                    this.style.transform = `translateX(-${Math.min(diff, 80)}px)`;
+                }
+            });
+            
+            card.addEventListener('touchend', function() {
+                if (!isSwipingCard) return;
+                
+                const diff = startX - currentX;
+                if (diff > 50) { // Swipe significativo
+                    const dayIndex = parseInt(this.closest('.day-card').querySelector('.add-exercise-btn-mobile').dataset.dayIndex);
+                    const exerciseIndex = parseInt(this.dataset.exerciseIndex);
+                    deleteExercise(dayIndex, exerciseIndex);
+                } else {
+                    this.style.transform = 'translateX(0)';
+                }
+                
+                isSwipingCard = false;
+            });
+        });
+    }
+    
+    function updateStats() {
+        const totalExercises = days.reduce((sum, day) => sum + day.exercises.length, 0);
+        const totalVideos = days.reduce((sum, day) => {
+            return sum + day.exercises.filter(ex => ex.video).length;
+        }, 0);
+        
+        daysCountElement.textContent = days.length;
+        exercisesCountElement.textContent = totalExercises;
+        videosCountElement.textContent = totalVideos;
+    }
+    
+    // ========== VISTA PREVIA Y PDF ==========
+    
+    function showPreview() {
+        if (days.length === 0) {
+            showToast('Agrega al menos un día', 'warning');
+            return;
+        }
+        
         const hasExercises = days.some(day => day.exercises.length > 0);
         if (!hasExercises) {
-            showNotification('No hay ejercicios en la rutina. Agrega al menos un ejercicio en algún día.', 'warning');
+            showToast('Agrega ejercicios a los días', 'warning');
             return;
         }
         
         updatePdfPreview();
         previewSection.classList.remove('hidden');
-        
-        // Desplazar a la vista previa
-        previewSection.scrollIntoView({ behavior: 'smooth' });
-    });
+        document.body.style.overflow = 'hidden';
+    }
     
-    // Event listener para cerrar vista previa
     closePreviewBtn.addEventListener('click', function() {
         previewSection.classList.add('hidden');
+        document.body.style.overflow = 'auto';
     });
     
-    // Función para actualizar la vista previa del PDF
     function updatePdfPreview() {
-        // Limpiar contenido
-        pdfContent.innerHTML = '';
+        pdfPreview.innerHTML = '';
         
-        // Agregar sección para cada día
         days.forEach(day => {
             if (day.exercises.length === 0) return;
             
             const daySection = document.createElement('div');
-            daySection.className = 'pdf-day-section';
+            daySection.className = 'pdf-day-preview-mobile';
             
-            // Crear filas de la tabla para los ejercicios
             let tableRows = '';
             day.exercises.forEach((exercise, index) => {
-                // Crear enlace de video clickeable
                 let videoCell = '<td>-</td>';
                 if (exercise.video) {
-                    const shortUrl = exercise.video.length > 30 ? 
-                        exercise.video.substring(0, 30) + '...' : exercise.video;
+                    const shortUrl = exercise.video.length > 25 ? 
+                        exercise.video.substring(0, 25) + '...' : exercise.video;
                     
                     videoCell = `
-                        <td class="video-cell">
-                            <a href="${exercise.video}" target="_blank" title="Ver video de ${exercise.name}">
-                                <i class="fas fa-video"></i> ${shortUrl}
+                        <td>
+                            <a href="${exercise.video}" target="_blank" style="color: #2196f3; text-decoration: underline; font-size: 0.8rem;">
+                                ${shortUrl}
                             </a>
                         </td>
                     `;
@@ -629,36 +767,28 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${getMuscleLabel(exercise.muscle) || '-'}</td>
                         <td>${exercise.sets}</td>
                         <td>${exercise.reps}</td>
-                        <td>${exercise.rest || '60'} seg.</td>
+                        <td>${exercise.rest || '60'}s</td>
                         ${videoCell}
                         <td>${exercise.notes || '-'}</td>
                     </tr>
                 `;
             });
             
-            // Crear sección del día
             daySection.innerHTML = `
-                <div class="pdf-day-header">
-                    <div class="pdf-day-title">
-                        <i class="fas fa-calendar-day"></i> ${day.name}
-                        ${day.focus ? `<span style="font-size: 0.9rem; color: #666; margin-left: 10px;">(${day.focus})</span>` : ''}
-                    </div>
-                    ${day.notes ? `
-                    <div class="pdf-day-notes">
-                        <strong>Notas del día:</strong> ${day.notes}
-                    </div>
-                    ` : ''}
+                <div class="pdf-day-header-mobile">
+                    <h3><i class="fas fa-calendar-day"></i> ${day.name} ${day.focus ? `(${day.focus})` : ''}</h3>
+                    ${day.notes ? `<p class="pdf-day-notes-mobile">${day.notes}</p>` : ''}
                 </div>
-                <table class="pdf-table">
+                <table class="pdf-table-mobile">
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Ejercicio</th>
-                            <th>Grupo Muscular</th>
+                            <th>Grupo</th>
                             <th>Series</th>
-                            <th>Repeticiones</th>
-                            <th>Descanso</th>
-                            <th>Video (Clickeable)</th>
+                            <th>Reps</th>
+                            <th>Desc</th>
+                            <th>Video</th>
                             <th>Notas</th>
                         </tr>
                     </thead>
@@ -668,164 +798,131 @@ document.addEventListener('DOMContentLoaded', function() {
                 </table>
             `;
             
-            pdfContent.appendChild(daySection);
+            pdfPreview.appendChild(daySection);
         });
-        
-        // Agregar notas generales si existen
-        const generalNotes = routineNotesInput.value.trim();
-        if (generalNotes) {
-            const notesSection = document.createElement('div');
-            notesSection.className = 'pdf-routine-notes';
-            notesSection.innerHTML = `
-                <h3><i class="fas fa-clipboard-check"></i> Notas Generales de la Rutina</h3>
-                <p>${generalNotes.replace(/\n/g, '<br>')}</p>
-            `;
-            pdfContent.appendChild(notesSection);
-        }
     }
     
-    // Event listener para generar PDF (abrir modal de cliente)
-    generatePdfBtn.addEventListener('click', function() {
+    // ========== GENERACIÓN DE PDF ==========
+    
+    function generatePDF() {
         if (days.length === 0) {
-            showNotification('No hay días en la rutina. Agrega al menos un día.', 'warning');
+            showToast('Agrega al menos un día', 'warning');
             return;
         }
         
-        // Verificar si hay al menos un ejercicio en algún día
         const hasExercises = days.some(day => day.exercises.length > 0);
         if (!hasExercises) {
-            showNotification('No hay ejercicios en la rutina. Agrega al menos un ejercicio en algún día.', 'warning');
+            showToast('Agrega ejercicios a los días', 'warning');
             return;
         }
         
-        // Mostrar modal para información del cliente
+        // Mostrar modal de cliente
         clientModal.classList.remove('hidden');
-    });
+        setTimeout(() => {
+            clientModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
+        }, 10);
+    }
     
-    // Event listeners para el modal del cliente
     confirmClientBtn.addEventListener('click', function() {
         const clientName = clientNameInput.value.trim() || 'Cliente de Luciana Gala';
         const routineName = routineNameInput.value.trim() || 'Rutina Personalizada';
         const routineNotes = routineNotesInput.value.trim();
         
-        // Cerrar modal
-        clientModal.classList.add('hidden');
-        
-        // Actualizar información en vista previa
-        clientNamePreview.textContent = clientName;
-        routineNamePreview.textContent = routineName;
+        closeClientModalFunc();
         
         // Generar PDF
-        generatePdf(clientName, routineName, routineNotes);
+        createAndDownloadPDF(clientName, routineName, routineNotes);
     });
     
-    cancelClientBtn.addEventListener('click', function() {
-        clientModal.classList.add('hidden');
-    });
-    
-    // Event listener para descargar PDF desde vista previa
     downloadPdfBtn.addEventListener('click', function() {
-        const clientName = clientNamePreview.textContent;
-        const routineName = routineNamePreview.textContent;
+        const clientName = clientNameInput.value.trim() || 'Cliente de Luciana Gala';
+        const routineName = routineNameInput.value.trim() || 'Rutina Personalizada';
         const routineNotes = routineNotesInput.value.trim();
         
-        generatePdf(clientName, routineName, routineNotes);
+        createAndDownloadPDF(clientName, routineName, routineNotes);
     });
     
-    // Event listener para editar rutina desde vista previa
     editRoutineBtn.addEventListener('click', function() {
         previewSection.classList.add('hidden');
-        
-        // Desplazar al inicio de los días
-        document.querySelector('.days-section').scrollIntoView({ behavior: 'smooth' });
+        document.body.style.overflow = 'auto';
     });
     
-    // ========== GENERACIÓN DE PDF ==========
-    
-    // Función para generar el PDF
-    function generatePdf(clientName, routineName, routineNotes) {
-        // Mostrar mensaje de carga
-        showNotification('Generando PDF, por favor espera...', 'info');
+    function createAndDownloadPDF(clientName, routineName, routineNotes) {
+        showToast('Generando PDF...', 'info');
         
-        // Crear contenido HTML para el PDF
-        const pdfContentHtml = createPdfContent(clientName, routineName, routineNotes);
+        // Crear contenido HTML
+        const pdfContent = createPDFContent(clientName, routineName, routineNotes);
         
-        // Crear elemento temporal para html2canvas
+        // Crear elemento temporal
         const tempElement = document.createElement('div');
-        tempElement.style.width = '210mm'; // Tamaño A4
-        tempElement.style.padding = '20mm';
-        tempElement.style.backgroundColor = 'white';
-        tempElement.style.fontFamily = "'Poppins', sans-serif";
-        tempElement.style.fontSize = '12px';
-        tempElement.innerHTML = pdfContentHtml;
-        
+        tempElement.style.cssText = `
+            width: 210mm;
+            padding: 15mm;
+            background: white;
+            font-family: 'Poppins', sans-serif;
+            font-size: 10px;
+            position: fixed;
+            left: -10000px;
+            top: -10000px;
+        `;
+        tempElement.innerHTML = pdfContent;
         document.body.appendChild(tempElement);
         
-        // Generar PDF con html2canvas y jsPDF
+        // Generar PDF
         html2canvas(tempElement, {
-            scale: 2, // Mejor calidad
+            scale: 3,
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff'
         }).then(canvas => {
-            // Eliminar elemento temporal
             document.body.removeChild(tempElement);
             
-            // Configurar PDF
             const pdf = new jspdf.jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
                 format: 'a4'
             });
             
-            // Calcular dimensiones
-            const imgWidth = 210; // Ancho A4 en mm
-            const pageHeight = 297; // Alto A4 en mm
+            const imgWidth = 210;
+            const pageHeight = 297;
             const imgHeight = canvas.height * imgWidth / canvas.width;
             
-            // Agregar imagen al PDF
-            const imgData = canvas.toDataURL('image/png');
+            pdf.addImage(canvas, 'PNG', 0, 0, imgWidth, imgHeight);
+            
+            // Manejar múltiples páginas
             let heightLeft = imgHeight;
             let position = 0;
             
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-            
-            // Si el contenido es más largo que una página, agregar páginas adicionales
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
+            while (heightLeft >= pageHeight) {
+                position = heightLeft - pageHeight;
                 pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                pdf.addImage(canvas, 'PNG', 0, -position, imgWidth, imgHeight);
                 heightLeft -= pageHeight;
             }
             
             // Guardar PDF
-            const fileName = `Rutina_${routineName.replace(/\s+/g, '_')}_${clientName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
+            const fileName = `Rutina_${routineName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
             pdf.save(fileName);
             
-            // Mostrar mensaje de éxito
-            showNotification(`PDF "${fileName}" generado y descargado correctamente`, 'success');
+            showToast('PDF descargado', 'success');
         }).catch(error => {
             console.error('Error al generar PDF:', error);
-            showNotification('Error al generar el PDF. Por favor, intenta nuevamente.', 'error');
+            showToast('Error al generar PDF', 'error');
         });
     }
     
-    // Función para crear el contenido HTML del PDF con enlaces clickeables
-    function createPdfContent(clientName, routineName, routineNotes) {
-        // Crear secciones para cada día
+    function createPDFContent(clientName, routineName, routineNotes) {
         let daysSections = '';
+        
         days.forEach(day => {
             if (day.exercises.length === 0) return;
             
-            // Crear filas de la tabla para los ejercicios del día
             let tableRows = '';
             day.exercises.forEach((exercise, index) => {
-                // Crear enlace de video clickeable
                 let videoCell = '<td>-</td>';
                 if (exercise.video) {
-                    const shortUrl = exercise.video.length > 30 ? 
-                        exercise.video.substring(0, 30) + '...' : exercise.video;
+                    const shortUrl = exercise.video.length > 20 ? 
+                        exercise.video.substring(0, 20) + '...' : exercise.video;
                     
                     videoCell = `<td><a href="${exercise.video}" style="color: #2196f3; text-decoration: underline;">${shortUrl}</a></td>`;
                 }
@@ -837,7 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${getMuscleLabel(exercise.muscle) || '-'}</td>
                         <td>${exercise.sets}</td>
                         <td>${exercise.reps}</td>
-                        <td>${exercise.rest || '60'} seg.</td>
+                        <td>${exercise.rest || '60'}s</td>
                         ${videoCell}
                         <td>${exercise.notes || '-'}</td>
                     </tr>
@@ -845,29 +942,29 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             daysSections += `
-                <div style="margin-bottom: 25px; page-break-inside: avoid;">
-                    <div style="background-color: #e1bee7; color: #333; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ba68c8;">
-                        <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                <div style="margin-bottom: 15px; page-break-inside: avoid;">
+                    <div style="background: #e1bee7; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #ba68c8;">
+                        <div style="font-weight: 600; font-size: 11px;">
                             <span style="color: #ba68c8;">📅</span> ${day.name}
-                            ${day.focus ? `<span style="font-size: 12px; color: #666; margin-left: 10px;">(${day.focus})</span>` : ''}
+                            ${day.focus ? `<span style="font-size: 10px; color: #666; margin-left: 5px;">(${day.focus})</span>` : ''}
                         </div>
                         ${day.notes ? `
-                        <div style="background-color: rgba(255, 255, 255, 0.7); border-radius: 6px; padding: 8px; margin-top: 8px; font-size: 11px; border-left: 3px solid #f06292;">
-                            <strong>Notas del día:</strong> ${day.notes}
+                        <div style="background: rgba(255,255,255,0.7); border-radius: 3px; padding: 5px; margin-top: 5px; font-size: 9px;">
+                            <strong>Notas:</strong> ${day.notes}
                         </div>
                         ` : ''}
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                        <thead style="background-color: #f8bbd9;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                        <thead style="background: #f8bbd9;">
                             <tr>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">#</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Ejercicio</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Grupo Muscular</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Series</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Repeticiones</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Descanso</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Video (Clickeable)</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #f06292;">Notas</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">#</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">Ejercicio</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">Grupo</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">Series</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">Reps</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">Desc</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">Video</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #f06292;">Notas</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -878,59 +975,39 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         });
         
-        // Crear contenido completo del PDF
         return `
-            <div style="font-family: 'Poppins', sans-serif; color: #333; font-size: 12px;">
-                <!-- Encabezado -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 2px solid #ba68c8;">
-                    <div>
-                        <h1 style="color: #ba68c8; margin: 0 0 5px 0; font-size: 22px; display: flex; align-items: center;">
-                            <span style="margin-right: 10px;">🏋️</span> Luciana Gala
+            <div style="font-family: 'Poppins', sans-serif; color: #333;">
+                <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #ba68c8;">
+                    <div style="text-align: center;">
+                        <h1 style="color: #ba68c8; margin: 0 0 5px 0; font-size: 16px;">
+                            🏋️ Luciana Gala
                         </h1>
-                        <p style="color: #666; margin: 0; font-size: 13px;">Personal Trainer - Rutina Personalizada por Días</p>
+                        <p style="color: #666; margin: 0; font-size: 11px;">Personal Trainer - Rutina Personalizada</p>
                     </div>
-                    <div style="text-align: right;">
-                        <h3 style="margin: 0 0 5px 0; font-size: 15px;">RUTINA: <span style="color: #ba68c8;">${routineName}</span></h3>
-                        <h4 style="margin: 0 0 5px 0; font-size: 14px;">PARA: <span style="color: #2196f3;">${clientName}</span></h4>
-                        <p style="color: #666; margin: 0; font-size: 12px;">Fecha: ${formattedDate}</p>
-                        <p style="color: #666; margin: 0; font-size: 12px;">Días: ${days.length}</p>
+                    <div style="margin-top: 10px;">
+                        <h3 style="margin: 0 0 3px 0; font-size: 13px;">RUTINA: <span style="color: #ba68c8;">${routineName}</span></h3>
+                        <h4 style="margin: 0 0 5px 0; font-size: 12px;">PARA: <span style="color: #2196f3;">${clientName}</span></h4>
+                        <p style="color: #666; margin: 0; font-size: 10px;">Fecha: ${new Date().toLocaleDateString('es-ES')}</p>
                     </div>
                 </div>
                 
-                <!-- Secciones por día -->
                 ${daysSections}
                 
-                <!-- Notas generales -->
                 ${routineNotes ? `
-                <div style="background-color: #f5f5f5; border-radius: 8px; padding: 18px; margin-top: 25px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
-                    <h3 style="color: #2196f3; margin: 0 0 12px 0; font-size: 14px; display: flex; align-items: center;">
-                        <span style="margin-right: 8px;">📝</span> Notas Generales de la Rutina
-                    </h3>
-                    <div style="white-space: pre-line; line-height: 1.5;">
+                <div style="background: #f5f5f5; border-radius: 5px; padding: 10px; margin-top: 15px; border-left: 3px solid #2196f3;">
+                    <h3 style="color: #2196f3; margin: 0 0 8px 0; font-size: 11px;">Notas Generales</h3>
+                    <div style="white-space: pre-line; font-size: 9px;">
                         ${routineNotes}
                     </div>
                 </div>
                 ` : ''}
                 
-                <!-- Pie de página -->
-                <div style="display: flex; justify-content: space-between; padding-top: 25px; margin-top: 25px; border-top: 1px solid #e0e0e0; font-size: 11px;">
-                    <div style="text-align: center; width: 40%;">
-                        <p style="margin: 0 0 20px 0;">_________________________</p>
-                        <p style="margin: 0 0 5px 0; font-weight: bold;">Luciana Gala</p>
-                        <p style="margin: 0 0 5px 0;">Personal Trainer</p>
+                <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 9px;">
+                    <div style="text-align: center;">
+                        <p style="margin: 0 0 10px 0;">_________________________</p>
+                        <p style="margin: 0 0 3px 0; font-weight: bold;">Luciana Gala</p>
+                        <p style="margin: 0 0 3px 0;">Personal Trainer</p>
                         <p style="margin: 0;">Contacto: +54 3472 55-8896</p>
-                    </div>
-                    <div style="width: 55%;">
-                        <h4 style="color: #ba68c8; margin: 0 0 10px 0; font-size: 12px; display: flex; align-items: center;">
-                            <span style="margin-right: 8px;">💡</span> Consejos para el Entrenamiento:
-                        </h4>
-                        <ul style="margin: 0; padding-left: 20px; color: #666;">
-                            <li>Calienta durante 5-10 minutos antes de comenzar</li>
-                            <li>Mantén una buena hidratación durante el entrenamiento</li>
-                            <li>Realiza los ejercicios con técnica correcta</li>
-                            <li>Escucha a tu cuerpo y descansa cuando sea necesario</li>
-                            <li>Haz clic en los enlaces de video para ver la técnica</li>
-                        </ul>
                     </div>
                 </div>
             </div>
@@ -939,7 +1016,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ========== FUNCIONES UTILITARIAS ==========
     
-    // Función para obtener etiqueta legible del grupo muscular
     function getMuscleLabel(muscleKey) {
         const muscles = {
             'piernas': 'Piernas',
@@ -947,16 +1023,11 @@ document.addEventListener('DOMContentLoaded', function() {
             'espalda': 'Espalda',
             'hombros': 'Hombros',
             'brazos': 'Brazos',
-            'abdomen': 'Abdomen',
-            'cardio': 'Cardio',
-            'full-body': 'Full Body',
-            'otros': 'Otros'
+            'abdomen': 'Abdomen'
         };
-        
         return muscles[muscleKey] || muscleKey;
     }
     
-    // Función para validar URL
     function isValidUrl(string) {
         try {
             new URL(string);
@@ -966,182 +1037,198 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Función para mostrar notificaciones
-    function showNotification(message, type = 'info') {
-        // Crear elemento de notificación
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <span>${message}</span>
-            <button class="notification-close">&times;</button>
-        `;
+    function showToast(message, type = 'info') {
+        const toastIcon = toast.querySelector('.toast-icon');
         
-        // Estilos de notificación
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 3000;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            min-width: 300px;
-            max-width: 400px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            transform: translateX(120%);
-            transition: transform 0.3s ease;
-        `;
+        // Configurar icono según tipo
+        switch(type) {
+            case 'success':
+                toastIcon.className = 'toast-icon fas fa-check-circle';
+                break;
+            case 'error':
+                toastIcon.className = 'toast-icon fas fa-exclamation-circle';
+                break;
+            case 'warning':
+                toastIcon.className = 'toast-icon fas fa-exclamation-triangle';
+                break;
+            case 'info':
+                toastIcon.className = 'toast-icon fas fa-info-circle';
+                break;
+        }
         
-        // Colores según tipo
-        const colors = {
-            'success': '#4caf50',
-            'error': '#f44336',
-            'warning': '#ff9800',
-            'info': '#2196f3'
-        };
+        toast.querySelector('.toast-message').textContent = message;
+        toast.className = `toast ${type} show`;
         
-        notification.style.backgroundColor = colors[type] || colors.info;
-        
-        // Botón para cerrar
-        const closeBtn = notification.querySelector('.notification-close');
-        closeBtn.style.cssText = `
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            margin-left: 15px;
-            padding: 0;
-            line-height: 1;
-        `;
-        
-        // Agregar al DOM
-        document.body.appendChild(notification);
-        
-        // Mostrar con animación
+        // Ocultar después de 3 segundos
         setTimeout(() => {
-            notification.style.transform = 'translateX(0)';
-        }, 10);
+            toast.classList.remove('show');
+        }, 3000);
+    }
+    
+    function showSwipeConfirm(callback) {
+        const swipeConfirm = document.getElementById('swipe-confirm');
+        const swipeProgress = document.querySelector('.swipe-progress');
         
-        // Event listener para cerrar
-        closeBtn.addEventListener('click', function() {
-            notification.style.transform = 'translateX(120%)';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
-        });
+        swipeConfirm.classList.add('show');
         
-        // Auto-eliminar después de 5 segundos
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.transform = 'translateX(120%)';
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 300);
+        let startX = 0;
+        let currentX = 0;
+        let progress = 0;
+        
+        function handleTouchStart(e) {
+            startX = e.touches[0].clientX;
+            isSwiping = true;
+        }
+        
+        function handleTouchMove(e) {
+            if (!isSwiping) return;
+            
+            currentX = e.touches[0].clientX;
+            const diff = currentX - startX;
+            
+            if (diff > 0) {
+                progress = Math.min(diff / 200, 1);
+                swipeProgress.style.width = `${progress * 100}%`;
             }
+        }
+        
+        function handleTouchEnd() {
+            if (!isSwiping) return;
+            
+            if (progress >= 0.8) {
+                callback();
+                swipeConfirm.classList.remove('show');
+            } else {
+                swipeProgress.style.width = '0%';
+            }
+            
+            isSwiping = false;
+            progress = 0;
+            
+            // Remover event listeners
+            document.removeEventListener('touchstart', handleTouchStart);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+        }
+        
+        // Agregar event listeners
+        document.addEventListener('touchstart', handleTouchStart);
+        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchend', handleTouchEnd);
+        
+        // Ocultar después de 5 segundos si no se usa
+        setTimeout(() => {
+            if (isSwiping) return;
+            swipeConfirm.classList.remove('show');
+            document.removeEventListener('touchstart', handleTouchStart);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
         }, 5000);
     }
     
-    // ========== SCROLL TOP BUTTON ==========
+    // ========== ALMACENAMIENTO LOCAL ==========
     
-    // Mostrar/ocultar botón de scroll top
-    window.addEventListener('scroll', function() {
-        if (window.pageYOffset > 300) {
-            scrollTopBtn.classList.add('visible');
-        } else {
-            scrollTopBtn.classList.remove('visible');
+    function saveData() {
+        const data = {
+            days: days,
+            usedDays: usedDays,
+            clientName: clientNameInput.value,
+            routineName: routineNameInput.value
+        };
+        
+        try {
+            localStorage.setItem('lucianaRutinaData', JSON.stringify(data));
+        } catch (e) {
+            console.error('Error al guardar datos:', e);
+        }
+    }
+    
+    function loadSavedData() {
+        try {
+            const savedData = localStorage.getItem('lucianaRutinaData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                days = data.days || [];
+                usedDays = data.usedDays || [];
+                
+                if (data.clientName) clientNameInput.value = data.clientName;
+                if (data.routineName) routineNameInput.value = data.routineName;
+                
+                updateDaysList();
+                updateStats();
+                showToast('Datos cargados', 'info');
+            }
+        } catch (e) {
+            console.error('Error al cargar datos:', e);
+        }
+    }
+    
+    // ========== EVENT LISTENERS GLOBALES ==========
+    
+    // Cerrar menú al hacer clic fuera
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('header') && !mainNav.classList.contains('hidden')) {
+            mainNav.classList.add('hidden');
+            mobileMenuBtn.querySelector('i').classList.remove('fa-times');
+            mobileMenuBtn.querySelector('i').classList.add('fa-bars');
         }
     });
     
-    // Event listener para botón de scroll top
-    scrollTopBtn.addEventListener('click', function() {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
+    // Guardar datos al salir
+    window.addEventListener('beforeunload', saveData);
+    
+    // Manejar tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (!dayModal.classList.contains('hidden')) closeDayModalFunc();
+            if (!exerciseModal.classList.contains('hidden')) closeExerciseModalFunc();
+            if (!clientModal.classList.contains('hidden')) closeClientModalFunc();
+            if (!previewSection.classList.contains('hidden')) {
+                previewSection.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        }
     });
     
-    // ========== EJEMPLO INICIAL (OPCIONAL) ==========
+    // ========== INICIALIZACIÓN FINAL ==========
     
-    // Descomenta el siguiente bloque si quieres cargar un ejemplo al iniciar
+    console.log('Sistema de rutinas móvil cargado');
+    showToast('¡Bienvenida Luciana!', 'info');
+    
+    // Ejemplo inicial (opcional)
     /*
     setTimeout(() => {
-        // Agregar días de ejemplo
-        const exampleDays = [
-            {
-                name: 'Lunes',
-                focus: 'Piernas y Abdomen',
-                notes: 'Enfocarse en técnica, especialmente en sentadillas',
-                exercises: [
-                    {
-                        name: "Sentadillas",
-                        muscle: "piernas",
-                        sets: "4",
-                        reps: "10-12",
-                        rest: "60",
-                        video: "https://www.youtube.com/watch?v=aclHkVaku9U",
-                        notes: "Mantener la espalda recta y bajar hasta que los muslos queden paralelos al suelo."
-                    },
-                    {
-                        name: "Prensa de Piernas",
-                        muscle: "piernas",
-                        sets: "3",
-                        reps: "12-15",
-                        rest: "60",
-                        video: "https://www.youtube.com/watch?v=IZxyjW7MPJQ",
-                        notes: "Controlar el movimiento, no bloquear las rodillas al extender."
-                    }
-                ]
-            },
-            {
-                name: 'Miércoles',
-                focus: 'Pecho y Espalda',
-                notes: 'Calentar hombros antes de comenzar',
-                exercises: [
-                    {
-                        name: "Press de Banca",
-                        muscle: "pecho",
-                        sets: "4",
-                        reps: "8-10",
-                        rest: "90",
-                        video: "https://www.youtube.com/watch?v=vc1E5CfRfos",
-                        notes: "Controlar el movimiento tanto al bajar como al subir."
-                    }
-                ]
-            }
-        ];
-        
-        exampleDays.forEach(day => {
-            // Agregar a días usados
-            usedDays.push(day.name);
+        if (days.length === 0) {
+            // Agregar días de ejemplo
+            const exampleDays = [
+                {
+                    name: 'Lunes',
+                    focus: 'Piernas',
+                    notes: 'Enfocarse en técnica',
+                    exercises: [
+                        {
+                            name: "Sentadillas",
+                            muscle: "piernas",
+                            sets: "3",
+                            reps: "10-12",
+                            rest: "60",
+                            video: "https://youtube.com/watch?v=aclHkVaku9U",
+                            notes: "Espalda recta"
+                        }
+                    ]
+                }
+            ];
             
-            // Agregar día
-            day.id = Date.now() + Math.random();
-            days.push(day);
-        });
-        
-        updateDaysList();
-        updateDaysCounter();
-        
-        showNotification("Ejemplo de rutina cargado. Puedes editarlo o agregar más días.", "info");
+            exampleDays.forEach(day => {
+                usedDays.push(day.name);
+                day.id = Date.now() + Math.random();
+                days.push(day);
+            });
+            
+            updateDaysList();
+            updateStats();
+            showToast('Ejemplo cargado', 'info');
+        }
     }, 1000);
     */
-    
-    // ========== INICIALIZACIÓN ==========
-    
-    console.log("Sistema de creación de rutinas por días cargado correctamente");
-    console.log("Instrucciones:");
-    console.log("1. Usa 'Agregar Día' para crear días (Lunes, Martes, etc.)");
-    console.log("2. En cada día, agrega ejercicios usando 'Agregar Ejercicio'");
-    console.log("3. Usa 'Vista Previa' para ver cómo quedará el PDF");
-    console.log("4. Usa 'Generar PDF' para crear y descargar la rutina completa");
-    console.log("5. Los enlaces de video en el PDF serán clickeables");
 });
