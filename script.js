@@ -3,27 +3,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Variables globales
     let days = [];
     let usedDays = [];
-    let currentSwipeTarget = null;
-    let swipeProgress = 0;
-    let isSwiping = false;
     
-    // Elementos del DOM para móvil
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-    const mainNav = document.getElementById('main-nav');
-    const closeInfoBtn = document.getElementById('close-info');
-    const infoPanel = document.querySelector('.info-panel.mobile-info');
+    // Elementos del DOM
     const daysCountElement = document.getElementById('days-count');
     const exercisesCountElement = document.getElementById('exercises-count');
     const videosCountElement = document.getElementById('videos-count');
-    const floatingAddDay = document.getElementById('floating-add-day');
-    const floatingPreview = document.getElementById('floating-preview');
-    const floatingGenerate = document.getElementById('floating-generate');
-    const emptyAddDay = document.getElementById('empty-add-day');
-    const expandAllBtn = document.getElementById('expand-all');
     const daysContainer = document.getElementById('days-container');
     const addDayBtn = document.getElementById('add-day-btn');
-    const previewBtn = document.getElementById('preview-btn');
-    const generatePdfBtn = document.getElementById('generate-pdf-btn');
     const dayModal = document.getElementById('day-modal');
     const dayModalTitle = document.getElementById('day-modal-title');
     const dayForm = document.getElementById('day-form');
@@ -31,7 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelDayBtn = document.getElementById('cancel-day-btn');
     const exerciseModal = document.getElementById('exercise-modal');
     const exerciseModalTitle = document.getElementById('exercise-modal-title');
-    const exerciseModalSubtitle = document.getElementById('exercise-modal-subtitle');
     const exerciseForm = document.getElementById('exercise-form');
     const closeExerciseModal = document.getElementById('close-exercise-modal');
     const cancelExerciseBtn = document.getElementById('cancel-exercise-btn');
@@ -43,16 +28,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const clientModal = document.getElementById('client-modal');
     const clientNameInput = document.getElementById('client-name');
     const routineNameInput = document.getElementById('routine-name');
-    const routineNotesInput = document.getElementById('routine-notes');
     const closeClientModal = document.getElementById('close-client-modal');
     const confirmClientBtn = document.getElementById('confirm-client-btn');
     const cancelClientBtn = document.getElementById('cancel-client-btn');
-    const mainFab = document.getElementById('main-fab');
-    const fabOptions = document.querySelector('.fab-options');
-    const fabAddDay = document.getElementById('fab-add-day');
-    const fabQuickExercise = document.getElementById('fab-quick-exercise');
-    const fabPreview = document.getElementById('fab-preview');
-    const toast = document.getElementById('toast');
+    const bottomPreviewBtn = document.getElementById('bottom-preview-btn');
+    const bottomGenerateBtn = document.getElementById('bottom-generate-btn');
     
     // Variables para edición
     let isEditingDay = false;
@@ -63,94 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Días de la semana
     const weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    
-    // ========== INICIALIZACIÓN ==========
-    
-    // Ocultar panel de información después de 10 segundos
-    setTimeout(() => {
-        infoPanel.classList.add('hidden');
-    }, 10000);
-    
-    // Cargar datos guardados (si existen)
-    loadSavedData();
-    
-    // ========== MANEJO DE INTERFAZ MÓVIL ==========
-    
-    // Menú hamburguesa
-    mobileMenuBtn.addEventListener('click', function() {
-        mainNav.classList.toggle('hidden');
-        this.querySelector('i').classList.toggle('fa-bars');
-        this.querySelector('i').classList.toggle('fa-times');
-    });
-    
-    // Cerrar panel de información
-    closeInfoBtn.addEventListener('click', function() {
-        infoPanel.classList.add('hidden');
-    });
-    
-    // Botones flotantes
-    floatingAddDay.addEventListener('click', addDay);
-    floatingPreview.addEventListener('click', showPreview);
-    floatingGenerate.addEventListener('click', generatePDF);
-    emptyAddDay.addEventListener('click', addDay);
-    
-    // Expandir/contraer todos los días
-    expandAllBtn.addEventListener('click', function() {
-        const dayCards = document.querySelectorAll('.day-card');
-        const isExpanded = this.querySelector('i').classList.contains('fa-expand-alt');
-        
-        dayCards.forEach(card => {
-            const exercises = card.querySelector('.exercises-container-mobile');
-            if (exercises) {
-                if (isExpanded) {
-                    exercises.style.display = 'block';
-                } else {
-                    exercises.style.display = 'none';
-                }
-            }
-        });
-        
-        this.querySelector('i').classList.toggle('fa-expand-alt');
-        this.querySelector('i').classList.toggle('fa-compress-alt');
-    });
-    
-    // FAB (Floating Action Button)
-    mainFab.addEventListener('click', function() {
-        this.classList.toggle('active');
-        fabOptions.classList.toggle('show');
-    });
-    
-    fabAddDay.addEventListener('click', function() {
-        addDay();
-        mainFab.classList.remove('active');
-        fabOptions.classList.remove('show');
-    });
-    
-    fabQuickExercise.addEventListener('click', function() {
-        // Agregar ejercicio al último día o crear uno nuevo
-        if (days.length > 0) {
-            const lastDayIndex = days.length - 1;
-            addExerciseToDay(lastDayIndex);
-        } else {
-            showToast('Primero agrega un día', 'warning');
-        }
-        mainFab.classList.remove('active');
-        fabOptions.classList.remove('show');
-    });
-    
-    fabPreview.addEventListener('click', function() {
-        showPreview();
-        mainFab.classList.remove('active');
-        fabOptions.classList.remove('show');
-    });
-    
-    // Cerrar FAB al hacer clic fuera
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.fab-container')) {
-            mainFab.classList.remove('active');
-            fabOptions.classList.remove('show');
-        }
-    });
     
     // ========== FUNCIONES PARA MANEJAR DÍAS ==========
     
@@ -172,11 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Abrir modal con animación
         dayModal.classList.remove('hidden');
-        setTimeout(() => {
-            dayModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
-        }, 10);
     }
     
     function saveDay(dayData) {
@@ -191,15 +79,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Actualizar día
             dayData.id = days[editingDayIndex].id;
             days[editingDayIndex] = dayData;
-            
-            showToast(`Día "${dayData.name}" actualizado`, 'success');
         } else {
             // Nuevo día
             dayData.id = Date.now() + Math.random();
             dayData.exercises = [];
             days.push(dayData);
-            
-            showToast(`Día "${dayData.name}" agregado`, 'success');
         }
         
         // Agregar a días usados
@@ -259,18 +143,13 @@ document.addEventListener('DOMContentLoaded', function() {
         isEditingDay = true;
         editingDayIndex = index;
         
-        // Abrir modal
         dayModal.classList.remove('hidden');
-        setTimeout(() => {
-            dayModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
-        }, 10);
     }
     
     function removeDay(index) {
         const day = days[index];
         
-        // Mostrar confirmación con swipe
-        showSwipeConfirm(() => {
+        if (confirm(`¿Eliminar el día "${day.name}" y todos sus ejercicios?`)) {
             // Eliminar día
             days.splice(index, 1);
             
@@ -283,8 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateDaysList();
             updateStats();
             saveData();
-            showToast(`Día "${day.name}" eliminado`, 'info');
-        });
+        }
     }
     
     // ========== FUNCIONES PARA MANEJAR EJERCICIOS ==========
@@ -293,7 +171,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const day = days[dayIndex];
         
         exerciseModalTitle.textContent = "Nuevo Ejercicio";
-        exerciseModalSubtitle.textContent = `Día: ${day.name}`;
         document.getElementById('modal-day-index').value = dayIndex;
         document.getElementById('modal-exercise-index').value = '';
         exerciseForm.reset();
@@ -304,11 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
         editingExerciseDayIndex = null;
         editingExerciseIndex = null;
         
-        // Abrir modal
         exerciseModal.classList.remove('hidden');
-        setTimeout(() => {
-            exerciseModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
-        }, 10);
     }
     
     function editExercise(dayIndex, exerciseIndex) {
@@ -316,7 +189,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const exercise = day.exercises[exerciseIndex];
         
         exerciseModalTitle.textContent = "Editar Ejercicio";
-        exerciseModalSubtitle.textContent = `Día: ${day.name}`;
         document.getElementById('modal-day-index').value = dayIndex;
         document.getElementById('modal-exercise-index').value = exerciseIndex;
         
@@ -333,11 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
         editingExerciseDayIndex = dayIndex;
         editingExerciseIndex = exerciseIndex;
         
-        // Abrir modal
         exerciseModal.classList.remove('hidden');
-        setTimeout(() => {
-            exerciseModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
-        }, 10);
     }
     
     function saveExercise(exerciseData) {
@@ -346,11 +214,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isEditingExercise && editingExerciseDayIndex !== null && editingExerciseIndex !== null) {
             // Editar ejercicio
             days[editingExerciseDayIndex].exercises[editingExerciseIndex] = exerciseData;
-            showToast(`Ejercicio "${exerciseData.name}" actualizado`, 'success');
         } else {
             // Nuevo ejercicio
             days[dayIndex].exercises.push(exerciseData);
-            showToast(`Ejercicio "${exerciseData.name}" agregado`, 'success');
         }
         
         updateDaysList();
@@ -362,16 +228,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function deleteExercise(dayIndex, exerciseIndex) {
         const exercise = days[dayIndex].exercises[exerciseIndex];
         
-        // Mostrar confirmación con swipe
-        showSwipeConfirm(() => {
+        if (confirm(`¿Eliminar el ejercicio "${exercise.name}"?`)) {
             // Eliminar ejercicio
             days[dayIndex].exercises.splice(exerciseIndex, 1);
             
             updateDaysList();
             updateStats();
             saveData();
-            showToast(`Ejercicio "${exercise.name}" eliminado`, 'info');
-        });
+        }
     }
     
     // ========== MANEJO DE FORMULARIOS ==========
@@ -386,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         if (!dayData.name) {
-            showToast('Selecciona un día', 'error');
+            alert('Selecciona un día');
             return;
         }
         
@@ -408,22 +272,22 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Validaciones
         if (!exerciseData.name) {
-            showToast('Nombre del ejercicio requerido', 'error');
+            alert('Nombre del ejercicio requerido');
             return;
         }
         
         if (!exerciseData.sets || exerciseData.sets < 1) {
-            showToast('Mínimo 1 serie', 'error');
+            alert('Mínimo 1 serie');
             return;
         }
         
         if (!exerciseData.reps) {
-            showToast('Repeticiones requeridas', 'error');
+            alert('Repeticiones requeridas');
             return;
         }
         
         if (exerciseData.video && !isValidUrl(exerciseData.video)) {
-            showToast('URL de video inválida', 'error');
+            alert('URL de video inválida');
             return;
         }
         
@@ -433,40 +297,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========== MANEJO DE MODALES ==========
     
     function closeDayModalFunc() {
-        dayModal.querySelector('.mobile-modal-content').classList.remove('slide-in-up');
-        dayModal.querySelector('.mobile-modal-content').classList.add('slide-out-down');
-        
-        setTimeout(() => {
-            dayModal.classList.add('hidden');
-            dayModal.querySelector('.mobile-modal-content').classList.remove('slide-out-down');
-        }, 300);
-        
+        dayModal.classList.add('hidden');
         isEditingDay = false;
         editingDayIndex = null;
     }
     
     function closeExerciseModalFunc() {
-        exerciseModal.querySelector('.mobile-modal-content').classList.remove('slide-in-up');
-        exerciseModal.querySelector('.mobile-modal-content').classList.add('slide-out-down');
-        
-        setTimeout(() => {
-            exerciseModal.classList.add('hidden');
-            exerciseModal.querySelector('.mobile-modal-content').classList.remove('slide-out-down');
-        }, 300);
-        
+        exerciseModal.classList.add('hidden');
         isEditingExercise = false;
         editingExerciseDayIndex = null;
         editingExerciseIndex = null;
     }
     
     function closeClientModalFunc() {
-        clientModal.querySelector('.mobile-modal-content').classList.remove('slide-in-up');
-        clientModal.querySelector('.mobile-modal-content').classList.add('slide-out-down');
-        
-        setTimeout(() => {
-            clientModal.classList.add('hidden');
-            clientModal.querySelector('.mobile-modal-content').classList.remove('slide-out-down');
-        }, 300);
+        clientModal.classList.add('hidden');
     }
     
     // Event listeners para cerrar modales
@@ -497,19 +341,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (days.length === 0) {
             daysContainer.innerHTML = `
-                <div class="empty-state-mobile">
+                <div class="empty-state">
                     <div class="empty-icon">
                         <i class="fas fa-calendar-plus fa-3x"></i>
                     </div>
                     <h3>No hay días en la rutina</h3>
-                    <p>Toca el botón "Agregar Día" para comenzar</p>
-                    <button id="empty-add-day" class="btn-primary btn-empty">
-                        <i class="fas fa-calendar-plus"></i> Agregar mi primer día
-                    </button>
+                    <p>Presiona "Agregar Día" para comenzar</p>
                 </div>
             `;
-            
-            document.getElementById('empty-add-day').addEventListener('click', addDay);
             return;
         }
         
@@ -522,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
             let exercisesHTML = '';
             if (day.exercises.length === 0) {
                 exercisesHTML = `
-                    <div class="no-exercises-mobile">
+                    <div class="no-exercises">
                         <i class="fas fa-dumbbell"></i>
                         <p>No hay ejercicios. Agrega el primero.</p>
                     </div>
@@ -532,57 +371,57 @@ document.addEventListener('DOMContentLoaded', function() {
                     let videoLink = '';
                     if (exercise.video) {
                         videoLink = `
-                            <a href="${exercise.video}" target="_blank" class="video-link-mobile">
+                            <a href="${exercise.video}" target="_blank" class="video-link">
                                 <i class="fab fa-youtube"></i> Ver video
                             </a>
                         `;
                     }
                     
                     exercisesHTML += `
-                        <div class="exercise-card-mobile" data-exercise-index="${exIndex}">
-                            <div class="exercise-header-mobile">
-                                <div class="exercise-title-mobile">
-                                    <div class="exercise-number-mobile">${exIndex + 1}</div>
-                                    <div class="exercise-name-mobile">${exercise.name}</div>
-                                    ${exercise.muscle ? `<span class="exercise-muscle-mobile">${getMuscleLabel(exercise.muscle)}</span>` : ''}
+                        <div class="exercise-card" data-exercise-index="${exIndex}">
+                            <div class="exercise-header">
+                                <div class="exercise-title">
+                                    <div class="exercise-number">${exIndex + 1}</div>
+                                    <div class="exercise-name">${exercise.name}</div>
+                                    ${exercise.muscle ? `<span class="exercise-muscle">${getMuscleLabel(exercise.muscle)}</span>` : ''}
                                 </div>
-                                <div class="exercise-actions-mobile">
-                                    <button class="exercise-action-btn-mobile edit-exercise-btn-mobile" 
+                                <div class="exercise-actions">
+                                    <button class="exercise-action-btn edit-exercise-btn" 
                                             data-day-index="${dayIndex}" 
                                             data-exercise-index="${exIndex}">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="exercise-action-btn-mobile delete-exercise-btn-mobile"
+                                    <button class="exercise-action-btn delete-exercise-btn"
                                             data-day-index="${dayIndex}"
                                             data-exercise-index="${exIndex}">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
                             </div>
-                            <div class="exercise-details-mobile">
-                                <div class="detail-item-mobile">
-                                    <span class="detail-label-mobile">Series:</span>
-                                    <span class="detail-value-mobile">${exercise.sets}</span>
+                            <div class="exercise-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Series:</span>
+                                    <span class="detail-value">${exercise.sets}</span>
                                 </div>
-                                <div class="detail-item-mobile">
-                                    <span class="detail-label-mobile">Reps:</span>
-                                    <span class="detail-value-mobile">${exercise.reps}</span>
+                                <div class="detail-item">
+                                    <span class="detail-label">Reps:</span>
+                                    <span class="detail-value">${exercise.reps}</span>
                                 </div>
-                                <div class="detail-item-mobile">
-                                    <span class="detail-label-mobile">Descanso:</span>
-                                    <span class="detail-value-mobile">${exercise.rest || '60'} seg</span>
+                                <div class="detail-item">
+                                    <span class="detail-label">Descanso:</span>
+                                    <span class="detail-value">${exercise.rest || '60'} seg</span>
                                 </div>
-                                <div class="detail-item-mobile">
-                                    <span class="detail-label-mobile">Video:</span>
-                                    <div class="detail-value-mobile">
+                                <div class="detail-item">
+                                    <span class="detail-label">Video:</span>
+                                    <div class="detail-value">
                                         ${exercise.video ? videoLink : '<span style="color:#999">-</span>'}
                                     </div>
                                 </div>
                             </div>
                             ${exercise.notes ? `
-                            <div class="exercise-notes-mobile">
-                                <span class="detail-label-mobile">Notas:</span>
-                                <div class="detail-value-mobile">${exercise.notes}</div>
+                            <div class="exercise-notes">
+                                <span class="detail-label">Notas:</span>
+                                <div class="detail-value">${exercise.notes}</div>
                             </div>
                             ` : ''}
                         </div>
@@ -592,32 +431,32 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // HTML del día
             dayCard.innerHTML = `
-                <div class="day-header-mobile">
-                    <div class="day-badge-mobile">
+                <div class="day-header">
+                    <div class="day-badge">
                         <i class="fas fa-calendar-day"></i> ${day.name}
                     </div>
-                    <div class="day-info-mobile">
-                        <div class="day-name-mobile">${day.focus || 'Entrenamiento'}</div>
-                        <div class="day-focus-mobile">${day.exercises.length} ejercicio${day.exercises.length !== 1 ? 's' : ''}</div>
+                    <div class="day-info">
+                        <div class="day-name">${day.focus || 'Entrenamiento'}</div>
+                        <div class="day-focus">${day.exercises.length} ejercicio${day.exercises.length !== 1 ? 's' : ''}</div>
                     </div>
-                    <div class="day-actions-mobile">
-                        <button class="day-action-btn-mobile add-exercise-btn-mobile" data-day-index="${dayIndex}">
+                    <div class="day-actions">
+                        <button class="day-action-btn add-exercise-btn" data-day-index="${dayIndex}">
                             <i class="fas fa-plus"></i>
                         </button>
-                        <button class="day-action-btn-mobile edit-day-btn-mobile" data-day-index="${dayIndex}">
+                        <button class="day-action-btn edit-day-btn" data-day-index="${dayIndex}">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="day-action-btn-mobile remove-day-btn-mobile" data-day-index="${dayIndex}">
+                        <button class="day-action-btn remove-day-btn" data-day-index="${dayIndex}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
                 ${day.notes ? `
-                <div class="day-notes-mobile">
+                <div class="day-notes">
                     <p>${day.notes}</p>
                 </div>
                 ` : ''}
-                <div class="exercises-container-mobile">
+                <div class="exercises-container">
                     ${exercisesHTML}
                 </div>
             `;
@@ -631,71 +470,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function attachDayEventListeners() {
         // Botones de días
-        document.querySelectorAll('.day-action-btn-mobile').forEach(button => {
+        document.querySelectorAll('.day-action-btn').forEach(button => {
             button.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const dayIndex = parseInt(this.dataset.dayIndex);
                 
-                if (this.classList.contains('add-exercise-btn-mobile')) {
+                if (this.classList.contains('add-exercise-btn')) {
                     addExerciseToDay(dayIndex);
-                } else if (this.classList.contains('edit-day-btn-mobile')) {
+                } else if (this.classList.contains('edit-day-btn')) {
                     editDay(dayIndex);
-                } else if (this.classList.contains('remove-day-btn-mobile')) {
+                } else if (this.classList.contains('remove-day-btn')) {
                     removeDay(dayIndex);
                 }
             });
         });
         
         // Botones de ejercicios
-        document.querySelectorAll('.exercise-action-btn-mobile').forEach(button => {
+        document.querySelectorAll('.exercise-action-btn').forEach(button => {
             button.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const dayIndex = parseInt(this.dataset.dayIndex);
                 const exerciseIndex = parseInt(this.dataset.exerciseIndex);
                 
-                if (this.classList.contains('edit-exercise-btn-mobile')) {
+                if (this.classList.contains('edit-exercise-btn')) {
                     editExercise(dayIndex, exerciseIndex);
-                } else if (this.classList.contains('delete-exercise-btn-mobile')) {
+                } else if (this.classList.contains('delete-exercise-btn')) {
                     deleteExercise(dayIndex, exerciseIndex);
                 }
-            });
-        });
-        
-        // Swipe para eliminar en ejercicios
-        document.querySelectorAll('.exercise-card-mobile').forEach(card => {
-            let startX = 0;
-            let currentX = 0;
-            let isSwipingCard = false;
-            
-            card.addEventListener('touchstart', function(e) {
-                startX = e.touches[0].clientX;
-                isSwipingCard = true;
-            });
-            
-            card.addEventListener('touchmove', function(e) {
-                if (!isSwipingCard) return;
-                
-                currentX = e.touches[0].clientX;
-                const diff = startX - currentX;
-                
-                if (diff > 0) { // Swipe izquierda
-                    this.style.transform = `translateX(-${Math.min(diff, 80)}px)`;
-                }
-            });
-            
-            card.addEventListener('touchend', function() {
-                if (!isSwipingCard) return;
-                
-                const diff = startX - currentX;
-                if (diff > 50) { // Swipe significativo
-                    const dayIndex = parseInt(this.closest('.day-card').querySelector('.add-exercise-btn-mobile').dataset.dayIndex);
-                    const exerciseIndex = parseInt(this.dataset.exerciseIndex);
-                    deleteExercise(dayIndex, exerciseIndex);
-                } else {
-                    this.style.transform = 'translateX(0)';
-                }
-                
-                isSwipingCard = false;
             });
         });
     }
@@ -715,13 +516,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function showPreview() {
         if (days.length === 0) {
-            showToast('Agrega al menos un día', 'warning');
+            alert('Agrega al menos un día');
             return;
         }
         
         const hasExercises = days.some(day => day.exercises.length > 0);
         if (!hasExercises) {
-            showToast('Agrega ejercicios a los días', 'warning');
+            alert('Agrega ejercicios a los días');
             return;
         }
         
@@ -735,6 +536,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = 'auto';
     });
     
+    bottomPreviewBtn.addEventListener('click', showPreview);
+    
     function updatePdfPreview() {
         pdfPreview.innerHTML = '';
         
@@ -742,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (day.exercises.length === 0) return;
             
             const daySection = document.createElement('div');
-            daySection.className = 'pdf-day-preview-mobile';
+            daySection.className = 'pdf-day-preview';
             
             let tableRows = '';
             day.exercises.forEach((exercise, index) => {
@@ -775,11 +578,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             daySection.innerHTML = `
-                <div class="pdf-day-header-mobile">
+                <div class="pdf-day-header">
                     <h3><i class="fas fa-calendar-day"></i> ${day.name} ${day.focus ? `(${day.focus})` : ''}</h3>
-                    ${day.notes ? `<p class="pdf-day-notes-mobile">${day.notes}</p>` : ''}
+                    ${day.notes ? `<p class="pdf-day-notes">${day.notes}</p>` : ''}
                 </div>
-                <table class="pdf-table-mobile">
+                <table class="pdf-table">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -806,40 +609,37 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function generatePDF() {
         if (days.length === 0) {
-            showToast('Agrega al menos un día', 'warning');
+            alert('Agrega al menos un día');
             return;
         }
         
         const hasExercises = days.some(day => day.exercises.length > 0);
         if (!hasExercises) {
-            showToast('Agrega ejercicios a los días', 'warning');
+            alert('Agrega ejercicios a los días');
             return;
         }
         
         // Mostrar modal de cliente
         clientModal.classList.remove('hidden');
-        setTimeout(() => {
-            clientModal.querySelector('.mobile-modal-content').classList.add('slide-in-up');
-        }, 10);
     }
+    
+    bottomGenerateBtn.addEventListener('click', generatePDF);
     
     confirmClientBtn.addEventListener('click', function() {
         const clientName = clientNameInput.value.trim() || 'Cliente de Luciana Gala';
         const routineName = routineNameInput.value.trim() || 'Rutina Personalizada';
-        const routineNotes = routineNotesInput.value.trim();
         
         closeClientModalFunc();
         
         // Generar PDF
-        createAndDownloadPDF(clientName, routineName, routineNotes);
+        createAndDownloadPDF(clientName, routineName);
     });
     
     downloadPdfBtn.addEventListener('click', function() {
         const clientName = clientNameInput.value.trim() || 'Cliente de Luciana Gala';
         const routineName = routineNameInput.value.trim() || 'Rutina Personalizada';
-        const routineNotes = routineNotesInput.value.trim();
         
-        createAndDownloadPDF(clientName, routineName, routineNotes);
+        createAndDownloadPDF(clientName, routineName);
     });
     
     editRoutineBtn.addEventListener('click', function() {
@@ -847,11 +647,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = 'auto';
     });
     
-    function createAndDownloadPDF(clientName, routineName, routineNotes) {
-        showToast('Generando PDF...', 'info');
-        
+    function createAndDownloadPDF(clientName, routineName) {
         // Crear contenido HTML
-        const pdfContent = createPDFContent(clientName, routineName, routineNotes);
+        const pdfContent = createPDFContent(clientName, routineName);
         
         // Crear elemento temporal
         const tempElement = document.createElement('div');
@@ -903,15 +701,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Guardar PDF
             const fileName = `Rutina_${routineName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
             pdf.save(fileName);
-            
-            showToast('PDF descargado', 'success');
         }).catch(error => {
             console.error('Error al generar PDF:', error);
-            showToast('Error al generar PDF', 'error');
+            alert('Error al generar PDF');
         });
     }
     
-    function createPDFContent(clientName, routineName, routineNotes) {
+    function createPDFContent(clientName, routineName) {
         let daysSections = '';
         
         days.forEach(day => {
@@ -993,15 +789,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 ${daysSections}
                 
-                ${routineNotes ? `
-                <div style="background: #f5f5f5; border-radius: 5px; padding: 10px; margin-top: 15px; border-left: 3px solid #2196f3;">
-                    <h3 style="color: #2196f3; margin: 0 0 8px 0; font-size: 11px;">Notas Generales</h3>
-                    <div style="white-space: pre-line; font-size: 9px;">
-                        ${routineNotes}
-                    </div>
-                </div>
-                ` : ''}
-                
                 <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 9px;">
                     <div style="text-align: center;">
                         <p style="margin: 0 0 10px 0;">_________________________</p>
@@ -1037,95 +824,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function showToast(message, type = 'info') {
-        const toastIcon = toast.querySelector('.toast-icon');
-        
-        // Configurar icono según tipo
-        switch(type) {
-            case 'success':
-                toastIcon.className = 'toast-icon fas fa-check-circle';
-                break;
-            case 'error':
-                toastIcon.className = 'toast-icon fas fa-exclamation-circle';
-                break;
-            case 'warning':
-                toastIcon.className = 'toast-icon fas fa-exclamation-triangle';
-                break;
-            case 'info':
-                toastIcon.className = 'toast-icon fas fa-info-circle';
-                break;
-        }
-        
-        toast.querySelector('.toast-message').textContent = message;
-        toast.className = `toast ${type} show`;
-        
-        // Ocultar después de 3 segundos
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
-    
-    function showSwipeConfirm(callback) {
-        const swipeConfirm = document.getElementById('swipe-confirm');
-        const swipeProgress = document.querySelector('.swipe-progress');
-        
-        swipeConfirm.classList.add('show');
-        
-        let startX = 0;
-        let currentX = 0;
-        let progress = 0;
-        
-        function handleTouchStart(e) {
-            startX = e.touches[0].clientX;
-            isSwiping = true;
-        }
-        
-        function handleTouchMove(e) {
-            if (!isSwiping) return;
-            
-            currentX = e.touches[0].clientX;
-            const diff = currentX - startX;
-            
-            if (diff > 0) {
-                progress = Math.min(diff / 200, 1);
-                swipeProgress.style.width = `${progress * 100}%`;
-            }
-        }
-        
-        function handleTouchEnd() {
-            if (!isSwiping) return;
-            
-            if (progress >= 0.8) {
-                callback();
-                swipeConfirm.classList.remove('show');
-            } else {
-                swipeProgress.style.width = '0%';
-            }
-            
-            isSwiping = false;
-            progress = 0;
-            
-            // Remover event listeners
-            document.removeEventListener('touchstart', handleTouchStart);
-            document.removeEventListener('touchmove', handleTouchMove);
-            document.removeEventListener('touchend', handleTouchEnd);
-        }
-        
-        // Agregar event listeners
-        document.addEventListener('touchstart', handleTouchStart);
-        document.addEventListener('touchmove', handleTouchMove);
-        document.addEventListener('touchend', handleTouchEnd);
-        
-        // Ocultar después de 5 segundos si no se usa
-        setTimeout(() => {
-            if (isSwiping) return;
-            swipeConfirm.classList.remove('show');
-            document.removeEventListener('touchstart', handleTouchStart);
-            document.removeEventListener('touchmove', handleTouchMove);
-            document.removeEventListener('touchend', handleTouchEnd);
-        }, 5000);
-    }
-    
     // ========== ALMACENAMIENTO LOCAL ==========
     
     function saveData() {
@@ -1156,23 +854,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 updateDaysList();
                 updateStats();
-                showToast('Datos cargados', 'info');
             }
         } catch (e) {
             console.error('Error al cargar datos:', e);
         }
     }
     
-    // ========== EVENT LISTENERS GLOBALES ==========
+    // ========== INICIALIZACIÓN ==========
     
-    // Cerrar menú al hacer clic fuera
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('header') && !mainNav.classList.contains('hidden')) {
-            mainNav.classList.add('hidden');
-            mobileMenuBtn.querySelector('i').classList.remove('fa-times');
-            mobileMenuBtn.querySelector('i').classList.add('fa-bars');
-        }
-    });
+    loadSavedData();
     
     // Guardar datos al salir
     window.addEventListener('beforeunload', saveData);
@@ -1189,46 +879,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
-    
-    // ========== INICIALIZACIÓN FINAL ==========
-    
-    console.log('Sistema de rutinas móvil cargado');
-    showToast('¡Bienvenida Luciana!', 'info');
-    
-    // Ejemplo inicial (opcional)
-    /*
-    setTimeout(() => {
-        if (days.length === 0) {
-            // Agregar días de ejemplo
-            const exampleDays = [
-                {
-                    name: 'Lunes',
-                    focus: 'Piernas',
-                    notes: 'Enfocarse en técnica',
-                    exercises: [
-                        {
-                            name: "Sentadillas",
-                            muscle: "piernas",
-                            sets: "3",
-                            reps: "10-12",
-                            rest: "60",
-                            video: "https://youtube.com/watch?v=aclHkVaku9U",
-                            notes: "Espalda recta"
-                        }
-                    ]
-                }
-            ];
-            
-            exampleDays.forEach(day => {
-                usedDays.push(day.name);
-                day.id = Date.now() + Math.random();
-                days.push(day);
-            });
-            
-            updateDaysList();
-            updateStats();
-            showToast('Ejemplo cargado', 'info');
-        }
-    }, 1000);
-    */
 });

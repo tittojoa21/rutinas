@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Luciana Gala - Rutinas por Días</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luciana Gala - Rutinas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -12,7 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-    <!-- Header móvil optimizado -->
+    <!-- Header simple -->
     <header>
         <div class="container">
             <div class="mobile-header">
@@ -25,52 +25,12 @@
                         <p>Rutinas por Días</p>
                     </div>
                 </div>
-                <button id="mobile-menu-btn" class="mobile-menu-btn">
-                    <i class="fas fa-bars"></i>
-                </button>
             </div>
-            
-            <nav id="main-nav" class="mobile-nav hidden">
-                <div class="nav-actions">
-                    <button id="add-day-btn" class="btn-primary btn-mobile">
-                        <i class="fas fa-calendar-plus"></i> Agregar Día
-                    </button>
-                    <button id="preview-btn" class="btn-secondary btn-mobile">
-                        <i class="fas fa-eye"></i> Vista Previa
-                    </button>
-                    <button id="generate-pdf-btn" class="btn-primary btn-mobile">
-                        <i class="fas fa-file-pdf"></i> Generar PDF
-                    </button>
-                </div>
-            </nav>
         </div>
     </header>
 
     <main class="container">
-        <!-- Panel de información optimizado para móvil -->
-        <section class="info-panel mobile-info">
-            <div class="info-header">
-                <h2><i class="fas fa-info-circle"></i> Cómo usar</h2>
-                <button id="close-info" class="close-info-btn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="info-content">
-                <ol class="instructions-list">
-                    <li><span class="step-number">1</span> Toca <strong>"Agregar Día"</strong> para crear un día de entrenamiento</li>
-                    <li><span class="step-number">2</span> En cada día, toca <strong>"Agregar Ejercicio"</strong></li>
-                    <li><span class="step-number">3</span> Completa los datos del ejercicio</li>
-                    <li><span class="step-number">4</span> Toca <strong>"Vista Previa"</strong> para ver el PDF</li>
-                    <li><span class="step-number">5</span> Toca <strong>"Generar PDF"</strong> para descargar</li>
-                </ol>
-                <div class="mobile-tip">
-                    <i class="fas fa-mobile-alt"></i>
-                    <p><strong>Consejo:</strong> Los enlaces de video en el PDF son clickeables</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Contador rápido de días -->
+        <!-- Contador simple -->
         <div class="quick-stats">
             <div class="stat-card">
                 <div class="stat-icon">
@@ -101,49 +61,30 @@
             </div>
         </div>
 
-        <!-- Acciones rápidas flotantes -->
-        <div class="floating-actions">
-            <button id="floating-add-day" class="floating-btn primary">
-                <i class="fas fa-plus"></i>
-                <span class="floating-label">Agregar Día</span>
-            </button>
-            <button id="floating-preview" class="floating-btn secondary">
-                <i class="fas fa-eye"></i>
-                <span class="floating-label">Vista Previa</span>
-            </button>
-            <button id="floating-generate" class="floating-btn primary">
-                <i class="fas fa-file-pdf"></i>
-                <span class="floating-label">PDF</span>
-            </button>
-        </div>
-
-        <!-- Contenedor de días optimizado para móvil -->
+        <!-- Contenedor de días -->
         <section class="days-section">
-            <div class="section-header-mobile">
+            <div class="section-header">
                 <h2><i class="fas fa-calendar-alt"></i> Días de Entrenamiento</h2>
-                <button id="expand-all" class="icon-btn">
-                    <i class="fas fa-expand-alt"></i>
+                <button id="add-day-btn" class="btn-primary">
+                    <i class="fas fa-plus"></i> Agregar Día
                 </button>
             </div>
             
             <div id="days-container" class="days-container">
                 <!-- Los días se agregarán aquí dinámicamente -->
-                <div class="empty-state-mobile">
+                <div class="empty-state">
                     <div class="empty-icon">
                         <i class="fas fa-calendar-plus fa-3x"></i>
                     </div>
                     <h3>No hay días en la rutina</h3>
-                    <p>Toca el botón "Agregar Día" para comenzar</p>
-                    <button id="empty-add-day" class="btn-primary btn-empty">
-                        <i class="fas fa-calendar-plus"></i> Agregar mi primer día
-                    </button>
+                    <p>Presiona "Agregar Día" para comenzar</p>
                 </div>
             </div>
         </section>
 
-        <!-- Modal para agregar/editar día - Diseño móvil -->
-        <div id="day-modal" class="modal mobile-modal hidden">
-            <div class="modal-content mobile-modal-content">
+        <!-- Modal para agregar/editar día -->
+        <div id="day-modal" class="modal hidden">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h2><i class="fas fa-calendar-day"></i> <span id="day-modal-title">Nuevo Día</span></h2>
                     <button id="close-day-modal" class="modal-close-btn">
@@ -152,58 +93,55 @@
                 </div>
                 
                 <div class="modal-body">
-                    <form id="day-form" class="mobile-form">
+                    <form id="day-form" class="modal-form">
                         <input type="hidden" id="modal-day-index">
                         
-                        <div class="form-group-mobile">
-                            <label for="day-name" class="form-label-mobile">
+                        <div class="form-group">
+                            <label for="day-name" class="form-label">
                                 <i class="fas fa-calendar"></i> Día de la Semana
                             </label>
-                            <div class="day-selector">
-                                <select id="day-name" class="mobile-select" required>
-                                    <option value="">Seleccionar día...</option>
-                                    <option value="Lunes">Lunes</option>
-                                    <option value="Martes">Martes</option>
-                                    <option value="Miércoles">Miércoles</option>
-                                    <option value="Jueves">Jueves</option>
-                                    <option value="Viernes">Viernes</option>
-                                    <option value="Sábado">Sábado</option>
-                                    <option value="Domingo">Domingo</option>
-                                </select>
-                            </div>
-                            <small class="form-hint">Selecciona el día para esta rutina</small>
+                            <select id="day-name" class="form-select" required>
+                                <option value="">Seleccionar día...</option>
+                                <option value="Lunes">Lunes</option>
+                                <option value="Martes">Martes</option>
+                                <option value="Miércoles">Miércoles</option>
+                                <option value="Jueves">Jueves</option>
+                                <option value="Viernes">Viernes</option>
+                                <option value="Sábado">Sábado</option>
+                                <option value="Domingo">Domingo</option>
+                            </select>
                         </div>
                         
-                        <div class="form-group-mobile">
-                            <label for="day-focus" class="form-label-mobile">
-                                <i class="fas fa-bullseye"></i> Enfoque (opcional)
+                        <div class="form-group">
+                            <label for="day-focus" class="form-label">
+                                <i class="fas fa-bullseye"></i> Enfoque
                             </label>
-                            <input type="text" id="day-focus" class="mobile-input" placeholder="Ej: Piernas, Full Body...">
+                            <input type="text" id="day-focus" class="form-input" placeholder="Ej: Piernas, Full Body...">
                         </div>
                         
-                        <div class="form-group-mobile">
-                            <label for="day-notes" class="form-label-mobile">
+                        <div class="form-group">
+                            <label for="day-notes" class="form-label">
                                 <i class="fas fa-sticky-note"></i> Notas del día
                             </label>
-                            <textarea id="day-notes" class="mobile-textarea" rows="3" placeholder="Ej: Calentar 10 minutos, enfocarse en técnica..."></textarea>
+                            <textarea id="day-notes" class="form-textarea" rows="3" placeholder="Ej: Calentar 10 minutos..."></textarea>
                         </div>
                     </form>
                 </div>
                 
                 <div class="modal-footer">
-                    <button type="submit" form="day-form" class="btn-primary btn-modal">
+                    <button type="submit" form="day-form" class="btn-primary">
                         <i class="fas fa-save"></i> Guardar Día
                     </button>
-                    <button id="cancel-day-btn" class="btn-secondary btn-modal">
+                    <button id="cancel-day-btn" class="btn-secondary">
                         Cancelar
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Modal para agregar/editar ejercicio - Diseño móvil -->
-        <div id="exercise-modal" class="modal mobile-modal hidden">
-            <div class="modal-content mobile-modal-content">
+        <!-- Modal para agregar/editar ejercicio -->
+        <div id="exercise-modal" class="modal hidden">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h2><i class="fas fa-running"></i> <span id="exercise-modal-title">Nuevo Ejercicio</span></h2>
                     <button id="close-exercise-modal" class="modal-close-btn">
@@ -211,124 +149,117 @@
                     </button>
                 </div>
                 
-                <div class="modal-subtitle" id="exercise-modal-subtitle"></div>
-                
                 <div class="modal-body">
-                    <form id="exercise-form" class="mobile-form">
+                    <form id="exercise-form" class="modal-form">
                         <input type="hidden" id="modal-day-index">
                         <input type="hidden" id="modal-exercise-index">
                         
-                        <div class="form-group-mobile">
-                            <label for="exercise-name" class="form-label-mobile">
+                        <div class="form-group">
+                            <label for="exercise-name" class="form-label">
                                 <i class="fas fa-dumbbell"></i> Nombre del Ejercicio
                             </label>
-                            <input type="text" id="exercise-name" class="mobile-input" placeholder="Ej: Sentadillas" required>
+                            <input type="text" id="exercise-name" class="form-input" placeholder="Ej: Sentadillas" required>
                         </div>
                         
-                        <div class="form-row-mobile">
-                            <div class="form-group-mobile half">
-                                <label for="exercise-sets" class="form-label-mobile">
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="exercise-sets" class="form-label">
                                     <i class="fas fa-list-ol"></i> Series
                                 </label>
-                                <input type="number" id="exercise-sets" class="mobile-input" min="1" max="10" value="3" required>
+                                <input type="number" id="exercise-sets" class="form-input" min="1" max="10" value="3" required>
                             </div>
                             
-                            <div class="form-group-mobile half">
-                                <label for="exercise-reps" class="form-label-mobile">
+                            <div class="form-group half">
+                                <label for="exercise-reps" class="form-label">
                                     <i class="fas fa-redo"></i> Repeticiones
                                 </label>
-                                <input type="text" id="exercise-reps" class="mobile-input" placeholder="8-12" required>
+                                <input type="text" id="exercise-reps" class="form-input" placeholder="8-12" required>
                             </div>
                         </div>
                         
-                        <div class="form-group-mobile">
-                            <label for="exercise-muscle" class="form-label-mobile">
+                        <div class="form-group">
+                            <label for="exercise-muscle" class="form-label">
                                 <i class="fas fa-hand-rock"></i> Grupo Muscular
                             </label>
-                            <div class="muscle-selector">
-                                <select id="exercise-muscle" class="mobile-select">
-                                    <option value="">Seleccionar...</option>
-                                    <option value="piernas">Piernas</option>
-                                    <option value="pecho">Pecho</option>
-                                    <option value="espalda">Espalda</option>
-                                    <option value="hombros">Hombros</option>
-                                    <option value="brazos">Brazos</option>
-                                    <option value="abdomen">Abdomen</option>
-                                </select>
-                            </div>
+                            <select id="exercise-muscle" class="form-select">
+                                <option value="">Seleccionar...</option>
+                                <option value="piernas">Piernas</option>
+                                <option value="pecho">Pecho</option>
+                                <option value="espalda">Espalda</option>
+                                <option value="hombros">Hombros</option>
+                                <option value="brazos">Brazos</option>
+                                <option value="abdomen">Abdomen</option>
+                            </select>
                         </div>
                         
-                        <div class="form-group-mobile">
-                            <label for="exercise-rest" class="form-label-mobile">
-                                <i class="fas fa-clock"></i> Descanso (segundos)
+                        <div class="form-group">
+                            <label for="exercise-rest" class="form-label">
+                                <i class="fas fa-clock"></i> Descanso
                             </label>
-                            <div class="rest-selector">
-                                <select id="exercise-rest" class="mobile-select">
-                                    <option value="30">30 seg</option>
-                                    <option value="45">45 seg</option>
-                                    <option value="60" selected>60 seg</option>
-                                    <option value="90">90 seg</option>
-                                    <option value="120">120 seg</option>
-                                </select>
-                            </div>
+                            <select id="exercise-rest" class="form-select">
+                                <option value="30">30 seg</option>
+                                <option value="45">45 seg</option>
+                                <option value="60" selected>60 seg</option>
+                                <option value="90">90 seg</option>
+                                <option value="120">120 seg</option>
+                            </select>
                         </div>
                         
-                        <div class="form-group-mobile">
-                            <label for="exercise-video" class="form-label-mobile">
+                        <div class="form-group">
+                            <label for="exercise-video" class="form-label">
                                 <i class="fab fa-youtube"></i> Enlace de Video
                             </label>
-                            <input type="url" id="exercise-video" class="mobile-input" placeholder="https://youtube.com/...">
-                            <small class="form-hint">Será clickeable en el PDF</small>
+                            <input type="url" id="exercise-video" class="form-input" placeholder="https://youtube.com/...">
                         </div>
                         
-                        <div class="form-group-mobile">
-                            <label for="exercise-notes" class="form-label-mobile">
+                        <div class="form-group">
+                            <label for="exercise-notes" class="form-label">
                                 <i class="fas fa-sticky-note"></i> Notas del ejercicio
                             </label>
-                            <textarea id="exercise-notes" class="mobile-textarea" rows="3" placeholder="Ej: Mantener la espalda recta..."></textarea>
+                            <textarea id="exercise-notes" class="form-textarea" rows="3" placeholder="Ej: Mantener la espalda recta..."></textarea>
                         </div>
                     </form>
                 </div>
                 
                 <div class="modal-footer">
-                    <button type="submit" form="exercise-form" class="btn-primary btn-modal">
+                    <button type="submit" form="exercise-form" class="btn-primary">
                         <i class="fas fa-save"></i> Guardar Ejercicio
                     </button>
-                    <button id="cancel-exercise-btn" class="btn-secondary btn-modal">
+                    <button id="cancel-exercise-btn" class="btn-secondary">
                         Cancelar
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Vista previa del PDF optimizada para móvil -->
+        <!-- Vista previa del PDF -->
         <section id="preview-section" class="preview-section hidden">
-            <div class="preview-header-mobile">
-                <h2><i class="fas fa-file-pdf"></i> Vista Previa del PDF</h2>
+            <div class="preview-header">
+                <h2><i class="fas fa-file-pdf"></i> Vista Previa</h2>
                 <button id="close-preview" class="modal-close-btn">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             
             <div class="preview-content">
-                <div id="pdf-preview" class="pdf-preview-mobile">
+                <div id="pdf-preview" class="pdf-preview">
                     <!-- El contenido se genera dinámicamente -->
                 </div>
                 
-                <div class="preview-actions-mobile">
-                    <button id="download-pdf-btn" class="btn-primary btn-mobile-wide">
+                <div class="preview-actions">
+                    <button id="download-pdf-btn" class="btn-primary">
                         <i class="fas fa-download"></i> Descargar PDF
                     </button>
-                    <button id="edit-routine-btn" class="btn-secondary btn-mobile-wide">
+                    <button id="edit-routine-btn" class="btn-secondary">
                         <i class="fas fa-edit"></i> Seguir Editando
                     </button>
                 </div>
             </div>
         </section>
 
-        <!-- Modal para información del cliente - Móvil -->
-        <div id="client-modal" class="modal mobile-modal hidden">
-            <div class="modal-content mobile-modal-content">
+        <!-- Modal para información del cliente -->
+        <div id="client-modal" class="modal hidden">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h2><i class="fas fa-user-edit"></i> Personalizar Rutina</h2>
                     <button id="close-client-modal" class="modal-close-btn">
@@ -337,80 +268,43 @@
                 </div>
                 
                 <div class="modal-body">
-                    <form id="client-form" class="mobile-form">
-                        <div class="form-group-mobile">
-                            <label for="client-name" class="form-label-mobile">
+                    <form id="client-form" class="modal-form">
+                        <div class="form-group">
+                            <label for="client-name" class="form-label">
                                 <i class="fas fa-user"></i> Nombre del Cliente
                             </label>
-                            <input type="text" id="client-name" class="mobile-input" value="Cliente de Luciana Gala">
+                            <input type="text" id="client-name" class="form-input" value="Cliente de Luciana Gala">
                         </div>
                         
-                        <div class="form-group-mobile">
-                            <label for="routine-name" class="form-label-mobile">
+                        <div class="form-group">
+                            <label for="routine-name" class="form-label">
                                 <i class="fas fa-dumbbell"></i> Nombre de la Rutina
                             </label>
-                            <input type="text" id="routine-name" class="mobile-input" value="Rutina Personalizada">
-                        </div>
-                        
-                        <div class="form-group-mobile">
-                            <label for="routine-notes" class="form-label-mobile">
-                                <i class="fas fa-clipboard"></i> Notas Generales
-                            </label>
-                            <textarea id="routine-notes" class="mobile-textarea" rows="3" placeholder="Ej: Realizar 3 veces por semana..."></textarea>
+                            <input type="text" id="routine-name" class="form-input" value="Rutina Personalizada">
                         </div>
                     </form>
                 </div>
                 
                 <div class="modal-footer">
-                    <button id="confirm-client-btn" class="btn-primary btn-modal">
+                    <button id="confirm-client-btn" class="btn-primary">
                         <i class="fas fa-check"></i> Generar PDF
                     </button>
-                    <button id="cancel-client-btn" class="btn-secondary btn-modal">
+                    <button id="cancel-client-btn" class="btn-secondary">
                         Cancelar
                     </button>
                 </div>
             </div>
         </div>
-
-        <!-- Botón flotante para acciones rápidas -->
-        <div class="fab-container">
-            <button id="main-fab" class="fab-button">
-                <i class="fas fa-plus"></i>
-            </button>
-            <div class="fab-options">
-                <button class="fab-option" id="fab-add-day">
-                    <i class="fas fa-calendar-plus"></i>
-                    <span>Agregar Día</span>
-                </button>
-                <button class="fab-option" id="fab-quick-exercise">
-                    <i class="fas fa-running"></i>
-                    <span>Ejercicio Rápido</span>
-                </button>
-                <button class="fab-option" id="fab-preview">
-                    <i class="fas fa-eye"></i>
-                    <span>Vista Previa</span>
-                </button>
-            </div>
-        </div>
     </main>
 
-    <!-- Toast para notificaciones móviles -->
-    <div id="toast" class="toast hidden">
-        <div class="toast-content">
-            <i class="toast-icon"></i>
-            <span class="toast-message"></span>
-        </div>
-    </div>
-
-    <!-- Swipe para eliminar confirmación -->
-    <div id="swipe-confirm" class swipe-confirm hidden>
-        <div class="swipe-content">
-            <i class="fas fa-trash"></i>
-            <p>Desliza para eliminar</p>
-            <div class="swipe-bar">
-                <div class="swipe-progress"></div>
-            </div>
-        </div>
+    <!-- Botones de acción fijos en la parte inferior -->
+    <div class="bottom-actions">
+        <button id="bottom-preview-btn" class="btn-secondary bottom-btn">
+            <i class="fas fa-eye"></i> Vista Previa
+        </button>
+        <button id="bottom-generate-btn" class="btn-primary bottom-btn">
+            <i class="fas fa-file-pdf"></i> Generar PDF
+        </button>
     </div>
 
     <script src="script.js"></script>
